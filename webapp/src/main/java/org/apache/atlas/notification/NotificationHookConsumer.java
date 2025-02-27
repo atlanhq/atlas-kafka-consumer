@@ -106,8 +106,8 @@ import static org.apache.atlas.web.security.AtlasAbstractAuthenticationProvider.
 /**
  * Consumer of notifications from hooks e.g., hive hook etc.
  */
-@Component
-@Order(5)
+//@Component
+//@Order(5)
 @DependsOn(value = {"atlasTypeDefStoreInitializer", "atlasTypeDefGraphStoreV2"})
 public class NotificationHookConsumer implements Service, ActiveStateChangeHandler {
     private static final Logger LOG        = LoggerFactory.getLogger(NotificationHookConsumer.class);
@@ -537,7 +537,7 @@ public class NotificationHookConsumer implements Service, ActiveStateChangeHandl
 
         @Override
         public void doWork() {
-            LOG.info("==> HookConsumer doWork()");
+            LOG.info("==> ObjectPropConsumer doWork()");
 
             shouldRun.set(true);
 
@@ -572,7 +572,7 @@ public class NotificationHookConsumer implements Service, ActiveStateChangeHandl
                     consumer.close();
                 }
 
-                LOG.info("<== HookConsumer doWork()");
+                LOG.info("<== ObjectPropConsumer doWork()");
             }
         }
 
@@ -652,8 +652,8 @@ public class NotificationHookConsumer implements Service, ActiveStateChangeHandl
 
                                 if (auditLog == null) {
                                     auditLog = new AuditLog(messageUser, THREADNAME_PREFIX,
-                                                            AtlasClient.API_V1.CREATE_ENTITY.getMethod(),
-                                                            AtlasClient.API_V1.CREATE_ENTITY.getNormalizedPath());
+                                            AtlasClient.API_V1.CREATE_ENTITY.getMethod(),
+                                            AtlasClient.API_V1.CREATE_ENTITY.getNormalizedPath());
                                 }
 
                                 createOrUpdate(entities, false, stats, context);
@@ -667,8 +667,8 @@ public class NotificationHookConsumer implements Service, ActiveStateChangeHandl
 
                                 if (auditLog == null) {
                                     auditLog = new AuditLog(messageUser, THREADNAME_PREFIX,
-                                                            AtlasClientV2.API_V2.UPDATE_ENTITY_BY_ATTRIBUTE.getMethod(),
-                                                            String.format(AtlasClientV2.API_V2.UPDATE_ENTITY_BY_ATTRIBUTE.getNormalizedPath(), partialUpdateRequest.getTypeName()));
+                                            AtlasClientV2.API_V2.UPDATE_ENTITY_BY_ATTRIBUTE.getMethod(),
+                                            String.format(AtlasClientV2.API_V2.UPDATE_ENTITY_BY_ATTRIBUTE.getNormalizedPath(), partialUpdateRequest.getTypeName()));
                                 }
 
                                 AtlasEntityType entityType = typeRegistry.getEntityTypeByName(partialUpdateRequest.getTypeName());
@@ -686,8 +686,8 @@ public class NotificationHookConsumer implements Service, ActiveStateChangeHandl
 
                                 if (auditLog == null) {
                                     auditLog = new AuditLog(messageUser, THREADNAME_PREFIX,
-                                                            AtlasClientV2.API_V2.DELETE_ENTITY_BY_ATTRIBUTE.getMethod(),
-                                                            String.format(AtlasClientV2.API_V2.DELETE_ENTITY_BY_ATTRIBUTE.getNormalizedPath(), deleteRequest.getTypeName()));
+                                            AtlasClientV2.API_V2.DELETE_ENTITY_BY_ATTRIBUTE.getMethod(),
+                                            String.format(AtlasClientV2.API_V2.DELETE_ENTITY_BY_ATTRIBUTE.getNormalizedPath(), deleteRequest.getTypeName()));
                                 }
 
                                 try {
@@ -709,8 +709,8 @@ public class NotificationHookConsumer implements Service, ActiveStateChangeHandl
 
                                 if (auditLog == null) {
                                     auditLog = new AuditLog(messageUser, THREADNAME_PREFIX,
-                                                            AtlasClientV2.API_V2.UPDATE_ENTITY.getMethod(),
-                                                            AtlasClientV2.API_V2.UPDATE_ENTITY.getNormalizedPath());
+                                            AtlasClientV2.API_V2.UPDATE_ENTITY.getMethod(),
+                                            AtlasClientV2.API_V2.UPDATE_ENTITY.getNormalizedPath());
                                 }
 
                                 createOrUpdate(entities, false, stats, context);
@@ -723,8 +723,8 @@ public class NotificationHookConsumer implements Service, ActiveStateChangeHandl
 
                                 if (auditLog == null) {
                                     auditLog = new AuditLog(messageUser, THREADNAME_PREFIX,
-                                                            AtlasClientV2.API_V2.CREATE_ENTITY.getMethod(),
-                                                            AtlasClientV2.API_V2.CREATE_ENTITY.getNormalizedPath());
+                                            AtlasClientV2.API_V2.CREATE_ENTITY.getMethod(),
+                                            AtlasClientV2.API_V2.CREATE_ENTITY.getNormalizedPath());
                                 }
 
                                 createOrUpdate(entities, false, stats, context);
@@ -738,8 +738,8 @@ public class NotificationHookConsumer implements Service, ActiveStateChangeHandl
 
                                 if (auditLog == null) {
                                     auditLog = new AuditLog(messageUser, THREADNAME_PREFIX,
-                                                            AtlasClientV2.API_V2.UPDATE_ENTITY.getMethod(),
-                                                            AtlasClientV2.API_V2.UPDATE_ENTITY.getNormalizedPath());
+                                            AtlasClientV2.API_V2.UPDATE_ENTITY.getMethod(),
+                                            AtlasClientV2.API_V2.UPDATE_ENTITY.getNormalizedPath());
                                 }
 
                                 EntityMutationResponse response = atlasEntityStore.updateEntity(entityId, entity, true);
@@ -754,8 +754,8 @@ public class NotificationHookConsumer implements Service, ActiveStateChangeHandl
 
                                 if (auditLog == null) {
                                     auditLog = new AuditLog(messageUser, THREADNAME_PREFIX,
-                                                            AtlasClientV2.API_V2.UPDATE_ENTITY.getMethod(),
-                                                            AtlasClientV2.API_V2.UPDATE_ENTITY.getNormalizedPath());
+                                            AtlasClientV2.API_V2.UPDATE_ENTITY.getMethod(),
+                                            AtlasClientV2.API_V2.UPDATE_ENTITY.getNormalizedPath());
                                 }
 
                                 createOrUpdate(entities, false, stats, context);
@@ -770,8 +770,8 @@ public class NotificationHookConsumer implements Service, ActiveStateChangeHandl
                                     for (AtlasObjectId entity : entities) {
                                         if (auditLog == null) {
                                             auditLog = new AuditLog(messageUser, THREADNAME_PREFIX,
-                                                                    AtlasClientV2.API_V2.DELETE_ENTITY_BY_ATTRIBUTE.getMethod(),
-                                                                    String.format(AtlasClientV2.API_V2.DELETE_ENTITY_BY_ATTRIBUTE.getNormalizedPath(), entity.getTypeName()));
+                                                    AtlasClientV2.API_V2.DELETE_ENTITY_BY_ATTRIBUTE.getMethod(),
+                                                    String.format(AtlasClientV2.API_V2.DELETE_ENTITY_BY_ATTRIBUTE.getNormalizedPath(), entity.getTypeName()));
                                         }
 
                                         AtlasEntityType type = (AtlasEntityType) typeRegistry.getType(entity.getTypeName());
@@ -793,7 +793,7 @@ public class NotificationHookConsumer implements Service, ActiveStateChangeHandl
 
                         if (StringUtils.isNotEmpty(exceptionClassName)) {
                             LOG.warn("{}: Pausing & retry: Try: {}: Pause: {} ms. Handled!",
-                                                exceptionClassName, numRetries, adaptiveWaiter.waitDuration);
+                                    exceptionClassName, numRetries, adaptiveWaiter.waitDuration);
                             exceptionClassName = StringUtils.EMPTY;
                         }
                         break;
@@ -959,7 +959,7 @@ public class NotificationHookConsumer implements Service, ActiveStateChangeHandl
 
         @Override
         public void shutdown() {
-            LOG.info("==> HookConsumer shutdown()");
+            LOG.info("==> ObjectPropConsumer shutdown()");
 
             // handle the case where thread was not started at all
             // and shutdown called
@@ -977,7 +977,7 @@ public class NotificationHookConsumer implements Service, ActiveStateChangeHandl
 
             super.awaitShutdown();
 
-            LOG.info("<== HookConsumer shutdown()");
+            LOG.info("<== ObjectPropConsumer shutdown()");
         }
     }
 

@@ -46,6 +46,7 @@ public interface NotificationInterface {
     enum NotificationType {
         // Notifications from the Atlas integration hooks.
         HOOK(new HookMessageDeserializer()),
+        OBJECT_PROP_EVENTS(new ObjectPropMessageDeserializer()),
 
         // Notifications to entity change consumers.
         ENTITIES(new EntityMessageDeserializer()),

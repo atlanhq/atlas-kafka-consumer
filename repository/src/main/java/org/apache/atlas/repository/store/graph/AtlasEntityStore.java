@@ -28,6 +28,7 @@ import org.apache.atlas.model.instance.AtlasEntityHeader;
 import org.apache.atlas.model.instance.AtlasObjectId;
 import org.apache.atlas.model.instance.AtlasHasLineageRequests;
 import org.apache.atlas.model.instance.EntityMutationResponse;
+import org.apache.atlas.model.notification.ObjectPropEvent;
 import org.apache.atlas.repository.store.graph.v2.BulkRequestContext;
 import org.apache.atlas.repository.store.graph.v2.EntityStream;
 import org.apache.atlas.type.AtlasEntityType;
@@ -383,4 +384,6 @@ public interface AtlasEntityStore {
      *  For evaluations of policies
      */
     List<AtlasEvaluatePolicyResponse> evaluatePolicies(List<AtlasEvaluatePolicyRequest> entities) throws AtlasBaseException;
+
+    void processTasks(ObjectPropEvent objectPropEvent);
 }
