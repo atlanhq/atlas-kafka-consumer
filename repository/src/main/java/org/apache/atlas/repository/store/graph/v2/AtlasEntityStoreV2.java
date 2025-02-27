@@ -34,6 +34,7 @@ import org.apache.atlas.model.instance.*;
 import org.apache.atlas.model.instance.AtlasEntity.AtlasEntitiesWithExtInfo;
 import org.apache.atlas.model.instance.AtlasEntity.AtlasEntityWithExtInfo;
 import org.apache.atlas.model.instance.AtlasEntity.Status;
+import org.apache.atlas.model.notification.ObjectPropEvent;
 import org.apache.atlas.model.notification.AtlasDistributedTaskNotification;
 import org.apache.atlas.model.tasks.AtlasTask;
 import org.apache.atlas.model.typedef.AtlasBaseTypeDef;
@@ -48,10 +49,7 @@ import org.apache.atlas.repository.graphdb.AtlasVertex;
 import org.apache.atlas.repository.patches.PatchContext;
 import org.apache.atlas.repository.patches.ReIndexPatch;
 import org.apache.atlas.repository.store.aliasstore.ESAliasStore;
-import org.apache.atlas.repository.store.graph.AtlasEntityStore;
-import org.apache.atlas.repository.store.graph.AtlasRelationshipStore;
-import org.apache.atlas.repository.store.graph.EntityGraphDiscovery;
-import org.apache.atlas.repository.store.graph.EntityGraphDiscoveryContext;
+import org.apache.atlas.repository.store.graph.*;
 import org.apache.atlas.repository.store.graph.v1.DeleteHandlerDelegate;
 import org.apache.atlas.repository.store.graph.v1.RestoreHandlerV1;
 import org.apache.atlas.repository.store.graph.v2.AtlasEntityComparator.AtlasEntityDiffResult;
@@ -144,7 +142,7 @@ public class AtlasEntityStoreV2 implements AtlasEntityStore {
     private final ESAliasStore esAliasStore;
     private final IAtlasMinimalChangeNotifier atlasAlternateChangeNotifier;
     private final AtlasDistributedTaskNotificationSender taskNotificationSender;
-
+    private ObjectPropagationExecutorV2 objectPropagationExecutorV2;
     private static final List<String> RELATIONSHIP_CLEANUP_SUPPORTED_TYPES = Arrays.asList(AtlasConfiguration.ATLAS_RELATIONSHIP_CLEANUP_SUPPORTED_ASSET_TYPES.getStringArray());
     private static final List<String> RELATIONSHIP_CLEANUP_RELATIONSHIP_LABELS = Arrays.asList(AtlasConfiguration.ATLAS_RELATIONSHIP_CLEANUP_SUPPORTED_RELATIONSHIP_LABELS.getStringArray());
 
@@ -800,6 +798,41 @@ public class AtlasEntityStoreV2 implements AtlasEntityStore {
         RequestContext.get().setEntityHeaderCache(cacheKey, entityHeader);
         RequestContext.get().endMetricRecord(metric);
         return entityHeader;
+    }
+
+    @Override
+    public void processTasks(ObjectPropEvent objectPropEvent) {
+        try {
+            switch (objectPropEvent.getOperation()) {
+                case CLASSIFICATION_PROPAGATION_ADD:
+                    objectPropagationExecutorV2 = new TagPropagate(entityGraphMapper);
+                    String tagVertexId = (String) objectPropEvent.getPayload().getOrDefault("tagVertexId", "");
+                    String assetVertexId = (String) objectPropEvent.getPayload().getOrDefault("assetVertexId", "");
+                    objectPropagationExecutorV2.attach(assetVertexId, tagVertexId);
+                    return;
+
+                case CLASSIFICATION_PROPAGATION_DELETE:
+                    objectPropagationExecutorV2 = new TagPropagate(entityGraphMapper);
+                    tagVertexId = (String) objectPropEvent.getPayload().getOrDefault("tagVertexId", "");
+                    assetVertexId = (String) objectPropEvent.getPayload().getOrDefault("assetVertexId", "");
+                    objectPropagationExecutorV2.detach(assetVertexId, tagVertexId);
+                    return;
+
+                case CLASSIFICATION_PROPAGATION_TEXT_UPDATE:
+                    objectPropagationExecutorV2 = new TagPropagate(entityGraphMapper);
+                    tagVertexId = (String) objectPropEvent.getPayload().getOrDefault("tagVertexId", "");
+                    assetVertexId = (String) objectPropEvent.getPayload().getOrDefault("assetVertexId", "");
+                    objectPropagationExecutorV2.updateText(assetVertexId, tagVertexId);
+                    return;
+
+                default:
+                    LOG.info("Unknown task");
+            }
+        }
+        catch (Exception e){
+            LOG.info("Some error occured while executing a subtask");
+            e.printStackTrace();
+        }
     }
 
     @Override
