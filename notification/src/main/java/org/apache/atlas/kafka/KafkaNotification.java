@@ -91,6 +91,7 @@ public class KafkaNotification extends AbstractNotification implements Service {
             put(NotificationType.RELATIONSHIPS, trimAndPurge(ATLAS_RELATIONSHIPS_CONSUMER_TOPICS));
         }
     };
+    public static final String ATLAS_CONSUMER = "atlas-consumer";
 
     private final Properties                                 properties;
     private final Long                                       pollTimeOutMs;
@@ -319,26 +320,14 @@ public class KafkaNotification extends AbstractNotification implements Service {
     public Properties getConsumerProperties(NotificationType notificationType) {
         // find the configured group id for the given notification type
         String groupId = properties.getProperty(notificationType.toString().toLowerCase() + "." + CONSUMER_GROUP_ID_PROPERTY);
-        groupId = "atlas";
         if (StringUtils.isEmpty(groupId)) {
-            throw new IllegalStateException("No configuration group id set for the notification type " + notificationType);
+            groupId = ATLAS_CONSUMER;
         }
 
         Properties consumerProperties = new Properties();
-        consumerProperties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9027");  // Broker address
-        consumerProperties.put(ConsumerConfig.GROUP_ID_CONFIG, "atlas-debug-" + UUID.randomUUID());  // Consumer group
-        consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
-        consumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
-
-        consumerProperties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"); // Start from the beginning if no offsets exist
-        consumerProperties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true"); // Automatically commit offsets
-        consumerProperties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "10"); // Fetch up to 10 records at a time
-        consumerProperties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "45000"); // Increase session timeout
-        consumerProperties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, "15000"); // Heartbeat interval
-        consumerProperties.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, "1"); // Ensure fetching even small messages
-        consumerProperties.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, "500");
-//        consumerProperties.putAll(properties);
-//        consumerProperties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        consumerProperties.putAll(properties);
+        consumerProperties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "10");
+        consumerProperties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
 
         return consumerProperties;
     }

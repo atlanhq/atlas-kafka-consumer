@@ -44,8 +44,8 @@ public class ObjectPropMessageDeserializer extends AbstractMessageDeserializer<O
      */
     public ObjectPropMessageDeserializer() {
         super(new TypeReference<ObjectPropEvent>() {},
-              new TypeReference<AtlasNotificationMessage<ObjectPropEvent>>() {},
-              AbstractNotification.CURRENT_MESSAGE_VERSION, NOTIFICATION_LOGGER);
+                new TypeReference<AtlasNotificationMessage<ObjectPropEvent>>() {},
+                AbstractNotification.CURRENT_MESSAGE_VERSION, NOTIFICATION_LOGGER);
     }
 
     @Override

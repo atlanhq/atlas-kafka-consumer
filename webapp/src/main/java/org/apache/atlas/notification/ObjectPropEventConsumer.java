@@ -4,7 +4,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import kafka.utils.ShutdownableThread;
 import org.apache.atlas.*;
-import org.apache.atlas.exception.AtlasBaseException;
 import org.apache.atlas.ha.HAConfiguration;
 import org.apache.atlas.kafka.AtlasKafkaMessage;
 import org.apache.atlas.listener.ActiveStateChangeHandler;
@@ -13,20 +12,11 @@ import org.apache.atlas.repository.converters.AtlasInstanceConverter;
 import org.apache.atlas.repository.store.graph.AtlasEntityStore;
 import org.apache.atlas.repository.store.graph.EntityCorrelationStore;
 import org.apache.atlas.service.Service;
-import org.apache.atlas.type.AtlasEntityType;
-import org.apache.atlas.type.AtlasStructType;
 import org.apache.atlas.type.AtlasTypeRegistry;
 import org.apache.atlas.util.AtlasMetricsCounter;
 import org.apache.atlas.util.AtlasMetricsUtil;
-import org.apache.atlas.utils.AtlasJson;
 import org.apache.atlas.utils.AtlasPerfTracer;
-import org.apache.atlas.utils.LruCache;
-import org.apache.atlas.v1.model.instance.Referenceable;
-import org.apache.atlas.v1.model.notification.HookNotificationV1;
-import org.apache.atlas.web.filters.AuditFilter;
 import org.apache.atlas.web.service.ServiceState;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.MapUtils;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.lang.StringUtils;
@@ -34,12 +24,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.inject.Inject;
@@ -49,11 +34,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Pattern;
-
-import static org.apache.atlas.model.instance.AtlasObjectId.*;
-import static org.apache.atlas.notification.preprocessor.EntityPreprocessor.TYPE_HIVE_PROCESS;
-import static org.apache.atlas.web.security.AtlasAbstractAuthenticationProvider.getAuthoritiesFromUGI;
 
 @Component
 @Order(5)
@@ -111,9 +91,9 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
 
     @Inject
     public ObjectPropEventConsumer(NotificationInterface notificationInterface, AtlasEntityStore atlasEntityStore,
-                                    ServiceState serviceState, AtlasInstanceConverter instanceConverter,
-                                    AtlasTypeRegistry typeRegistry, AtlasMetricsUtil metricsUtil,
-                                    EntityCorrelationStore entityCorrelationStore) throws AtlasException {
+                                   ServiceState serviceState, AtlasInstanceConverter instanceConverter,
+                                   AtlasTypeRegistry typeRegistry, AtlasMetricsUtil metricsUtil,
+                                   EntityCorrelationStore entityCorrelationStore) throws AtlasException {
         this.notificationInterface = notificationInterface;
         this.atlasEntityStore      = atlasEntityStore;
         this.serviceState          = serviceState;
