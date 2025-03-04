@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 
 @Component
-@ConditionalOnAtlasProperty(property = "atlas.redis.service.impl", isDefault = true)
+@ConditionalOnAtlasProperty(property = "atlas.redis.service.impl")
 public class NoRedisServiceImpl extends AbstractRedisService {
 
     private static final Logger LOG = LoggerFactory.getLogger(NoRedisServiceImpl.class);

@@ -14,6 +14,10 @@ public interface RedisService {
 
   String putValue(String key, String value, int timeout);
 
+  long incrValue(String key, long value);
+
+  long decrValue(String key, long value);
+
   void removeValue(String key);
 
   Logger getLogger();

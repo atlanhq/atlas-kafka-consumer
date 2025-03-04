@@ -12,6 +12,7 @@ import org.apache.atlas.repository.converters.AtlasInstanceConverter;
 import org.apache.atlas.repository.store.graph.AtlasEntityStore;
 import org.apache.atlas.repository.store.graph.EntityCorrelationStore;
 import org.apache.atlas.service.Service;
+import org.apache.atlas.service.redis.RedisService;
 import org.apache.atlas.type.AtlasTypeRegistry;
 import org.apache.atlas.util.AtlasMetricsCounter;
 import org.apache.atlas.util.AtlasMetricsUtil;
@@ -35,6 +36,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.apache.atlas.repository.store.graph.v2.AtlasEntityStoreV2.*;
+
 @Component
 @Order(5)
 public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandler {
@@ -42,6 +45,9 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
     private static final Logger PERF_LOG   = AtlasPerfTracer.getPerfLogger(ObjectPropEventConsumer.class);
     private static final Logger FAILED_LOG = LoggerFactory.getLogger("FAILED");
     private static final Logger LARGE_MESSAGES_LOG = LoggerFactory.getLogger("LARGE_MESSAGES");
+
+    public static long subTaskSuccess = 0;
+    public static long subTaskFail = 0;
 
     private static final int    SC_OK          = 200;
     private static final int    SC_BAD_REQUEST = 400;
@@ -59,6 +65,7 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
     public static final String CONSUMER_AUTHORIZE_USING_MESSAGE_USER                         = "atlas.notification.authorize.using.message.user";
     public static final String CONSUMER_AUTHORIZE_AUTHN_CACHE_TTL_SECONDS                    = "atlas.notification.authorize.authn.cache.ttl.seconds";
 
+    private final RedisService redisService;
     public static final int SERVER_READY_WAIT_TIME_MS = 1000;
 
     private final AtlasEntityStore atlasEntityStore;
@@ -93,12 +100,13 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
     public ObjectPropEventConsumer(NotificationInterface notificationInterface, AtlasEntityStore atlasEntityStore,
                                    ServiceState serviceState, AtlasInstanceConverter instanceConverter,
                                    AtlasTypeRegistry typeRegistry, AtlasMetricsUtil metricsUtil,
-                                   EntityCorrelationStore entityCorrelationStore) throws AtlasException {
+                                   EntityCorrelationStore entityCorrelationStore, RedisService redisService) throws AtlasException {
         this.notificationInterface = notificationInterface;
         this.atlasEntityStore      = atlasEntityStore;
         this.serviceState          = serviceState;
         this.instanceConverter     = instanceConverter;
         this.typeRegistry          = typeRegistry;
+        this.redisService = redisService;
         this.applicationProperties = ApplicationProperties.get();
         this.metricsUtil                    = metricsUtil;
         this.lastCommittedPartitionOffset   = new HashMap<>();
@@ -347,9 +355,23 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
                 while (shouldRun.get()) {
                     try {
                         List<AtlasKafkaMessage<ObjectPropEvent>> messages = consumer.receiveWithCheckedCommit(lastCommittedPartitionOffset);
-
                         for (AtlasKafkaMessage<ObjectPropEvent> msg : messages) {
-                            atlasEntityStore.processTasks(msg.getMessage());
+                            boolean res = atlasEntityStore.processTasks(msg.getMessage());
+                            if(res) {
+                                long commitOffset = msg.getOffset() + 1;
+                                consumer.commit(msg.getTopicPartition(), commitOffset);
+                                subTaskSuccess++;
+                            } else {
+                                subTaskFail++;
+                            }
+                        }
+                        if(subTaskSuccess > 0) {
+                            redisService.incrValue(ASSETS_COUNT_PROPAGATED, subTaskSuccess);
+                            subTaskSuccess = 0;
+                        }
+                        if(subTaskFail > 0) {
+                            redisService.incrValue(ASSETS_PROPAGATION_FAILED_COUNT, subTaskFail);
+                            subTaskFail = 0;
                         }
                     } catch (IllegalStateException ex) {
                         adaptiveWaiter.pause(ex);

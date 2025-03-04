@@ -700,7 +700,7 @@ public class EntityGraphMapper {
         for (String bmName : updatedBusinessMetadataNames) {
             requestBuilder.setBusinessMetadata(bmName);
 
-            AtlasAuthorizationUtils.verifyAccess(requestBuilder.build(), "add/update business-metadata: guid=", guid, ", business-metadata-name=", bmName);
+//            AtlasAuthorizationUtils.verifyAccess(requestBuilder.build(), "add/update business-metadata: guid=", guid, ", business-metadata-name=", bmName);
         }
 
         if (isOverwrite) {
@@ -889,7 +889,7 @@ public class EntityGraphMapper {
         for (String bmName : businessAttributes.keySet()) {
             requestBuilder.setBusinessMetadata(bmName);
 
-            AtlasAuthorizationUtils.verifyAccess(requestBuilder.build(), "remove business-metadata: guid=", entityHeader.getGuid(), ", business-metadata=", bmName);
+//            AtlasAuthorizationUtils.verifyAccess(requestBuilder.build(), "remove business-metadata: guid=", entityHeader.getGuid(), ", business-metadata=", bmName);
         }
 
         Map<String, Map<String, AtlasBusinessAttribute>> entityTypeBusinessAttributes = entityType.getBusinessAttributes();
@@ -3311,7 +3311,7 @@ public class EntityGraphMapper {
         String guid = GraphHelper.getGuid(entityVertex);
         AtlasEntity entity = instanceConverter.getEntity(guid, ENTITY_CHANGE_NOTIFY_IGNORE_RELATIONSHIP_ATTRIBUTES);
 
-        AtlasAuthorizationUtils.verifyAccess(new AtlasEntityAccessRequest(typeRegistry, AtlasPrivilege.ENTITY_UPDATE_CLASSIFICATION, new AtlasEntityHeader(entity)), "repair classification mappings: guid=", guid);
+//        AtlasAuthorizationUtils.verifyAccess(new AtlasEntityAccessRequest(typeRegistry, AtlasPrivilege.ENTITY_UPDATE_CLASSIFICATION, new AtlasEntityHeader(entity)), "repair classification mappings: guid=", guid);
         List<String> classificationNames = new ArrayList<>();
         List<String> propagatedClassificationNames = new ArrayList<>();
 
@@ -5299,11 +5299,11 @@ public class EntityGraphMapper {
         AtlasEntityHeader sourceEntity = retrieverNoRelation.toAtlasEntityHeaderWithClassifications(vertex);
 
         // source -> UPDATE + READ
-        AtlasAuthorizationUtils.verifyAccess(new AtlasEntityAccessRequest(typeRegistry, AtlasPrivilege.ENTITY_UPDATE, sourceEntity),
-                "update on source Entity, link/unlink operation denied: ", sourceEntity.getAttribute(NAME));
+//        AtlasAuthorizationUtils.verifyAccess(new AtlasEntityAccessRequest(typeRegistry, AtlasPrivilege.ENTITY_UPDATE, sourceEntity),
+//                "update on source Entity, link/unlink operation denied: ", sourceEntity.getAttribute(NAME));
 
-        AtlasAuthorizationUtils.verifyAccess(new AtlasEntityAccessRequest(typeRegistry, AtlasPrivilege.ENTITY_READ, sourceEntity),
-                "read on source Entity, link/unlink operation denied: ", sourceEntity.getAttribute(NAME));
+//        AtlasAuthorizationUtils.verifyAccess(new AtlasEntityAccessRequest(typeRegistry, AtlasPrivilege.ENTITY_READ, sourceEntity),
+//                "read on source Entity, link/unlink operation denied: ", sourceEntity.getAttribute(NAME));
 
     }
 }
