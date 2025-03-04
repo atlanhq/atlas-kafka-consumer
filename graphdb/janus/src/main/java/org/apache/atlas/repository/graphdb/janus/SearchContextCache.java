@@ -14,7 +14,7 @@ public class SearchContextCache {
     public static final String INVALID_SEQUENCE = "invalid_sequence";
 
 
-    public SearchContextCache(RedisService redisService) {
+    public SearchContextCache(@Qualifier("redisServiceImpl") RedisService redisService) {
         SearchContextCache.redisService = redisService;
     }
 

@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class FeatureFlagStore {
     private static RedisService redisService = null;
-    public FeatureFlagStore(RedisService redisService) {
+    public FeatureFlagStore(@Qualifier("redisServiceImpl") RedisService redisService) {
         FeatureFlagStore.redisService = redisService;
     }
 
