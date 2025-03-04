@@ -44,8 +44,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
 
-@Component
-@Order(9)
+//@Component
+//@Order(9)
+//@Component
+//@Order(9)
 public class AuthPoliciesBootstrapper implements ActiveStateChangeHandler, Service {
     public static final Logger LOG = LoggerFactory.getLogger(AuthPoliciesBootstrapper.class);
 

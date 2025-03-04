@@ -385,5 +385,5 @@ public interface AtlasEntityStore {
      */
     List<AtlasEvaluatePolicyResponse> evaluatePolicies(List<AtlasEvaluatePolicyRequest> entities) throws AtlasBaseException;
 
-    void processTasks(ObjectPropEvent objectPropEvent);
+    boolean processTasks(ObjectPropEvent objectPropEvent);
 }

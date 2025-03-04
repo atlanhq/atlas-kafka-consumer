@@ -4,6 +4,7 @@ import org.apache.atlas.ApplicationProperties;
 import org.apache.atlas.AtlasException;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.lang.ArrayUtils;
+import org.redisson.api.RAtomicLong;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
@@ -90,6 +91,20 @@ public abstract class AbstractRedisService implements RedisService {
         // Put the value in the redis cache with TTL
         redisCacheClient.getBucket(convertToNamespace(key)).set(value, timeout, TimeUnit.SECONDS);
         return value;
+    }
+
+    @Override
+    public long incrValue(String key, long value) {
+        RAtomicLong atomicLong = redisCacheClient.getAtomicLong(key);
+        long newValue = atomicLong.addAndGet(value);
+        return newValue;
+    }
+
+    @Override
+    public long decrValue(String key, long value) {
+        RAtomicLong atomicLong = redisCacheClient.getAtomicLong(key);
+        long newValue = atomicLong.addAndGet(-1 * value);
+        return newValue;
     }
 
     @Override
