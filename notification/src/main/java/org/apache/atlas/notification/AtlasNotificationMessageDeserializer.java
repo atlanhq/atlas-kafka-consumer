@@ -124,7 +124,8 @@ public abstract class AtlasNotificationMessageDeserializer<T> implements Message
 
         if (msg == null || msg.getVersion() == null) { // older style messages not wrapped with AtlasNotificationMessage
             ret = AtlasType.fromV1Json(messageJson, messageType);
-        } else  {
+        } else
+        {
             this.msgCreated = ((AtlasNotificationMessage) msg).getMsgCreationTime();
             this.spooled = ((AtlasNotificationMessage) msg).getSpooled();
 

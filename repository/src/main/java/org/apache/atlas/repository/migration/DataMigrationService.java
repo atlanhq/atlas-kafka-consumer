@@ -45,7 +45,7 @@ import java.nio.file.Paths;
 
 import static org.apache.atlas.AtlasConstants.ATLAS_MIGRATION_MODE_FILENAME;
 
-@Component
+//@Component
 public class DataMigrationService implements Service {
     private static final Logger LOG = LoggerFactory.getLogger(DataMigrationService.class);
 

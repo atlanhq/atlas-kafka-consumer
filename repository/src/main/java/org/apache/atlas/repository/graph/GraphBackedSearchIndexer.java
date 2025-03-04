@@ -78,6 +78,8 @@ import static org.apache.atlas.type.Constants.PENDING_TASKS_PROPERTY_KEY;
 /**
  * Adds index for properties of a given type when its added before any instances are added.
  */
+//@Component
+//@Order(1)
 @Component
 @Order(1)
 public class GraphBackedSearchIndexer implements SearchIndexer, ActiveStateChangeHandler, TypeDefChangeListener {
@@ -295,161 +297,161 @@ public class GraphBackedSearchIndexer implements SearchIndexer, ActiveStateChang
      * Initializes the indices for the graph - create indices for Global AtlasVertex and AtlasEdge Keys
      */
     private void initialize(AtlasGraph graph) throws RepositoryException, IndexException {
-        AtlasGraphManagement management = graph.getManagementSystem();
-
-        try {
-            LOG.debug("Creating indexes for graph.");
-
-            if (management.getGraphIndex(VERTEX_INDEX) == null) {
-                management.createVertexMixedIndex(VERTEX_INDEX, BACKING_INDEX, Collections.emptyList());
-
-                LOG.debug("Created index : {}", VERTEX_INDEX);
-            }
-
-            if (management.getGraphIndex(EDGE_INDEX) == null) {
-                management.createEdgeMixedIndex(EDGE_INDEX, BACKING_INDEX, Collections.emptyList());
-
-                LOG.debug("Created index : {}", EDGE_INDEX);
-            }
-
-            if (management.getGraphIndex(FULLTEXT_INDEX) == null) {
-                management.createFullTextMixedIndex(FULLTEXT_INDEX, BACKING_INDEX, Collections.emptyList());
-
-                LOG.debug("Created index : {}", FULLTEXT_INDEX);
-            }
-
-            HashMap<String, Object> ES_DATE_FIELD = new HashMap<>();
-            ES_DATE_FIELD.put("type", "date");
-            ES_DATE_FIELD.put("format", "epoch_millis");
-            HashMap<String, HashMap<String, Object>> TIMESTAMP_MULTIFIELDS = new HashMap<>();
-            TIMESTAMP_MULTIFIELDS.put("date", ES_DATE_FIELD);
-
-            HashMap<String, Object> ES_KEYWORD_FIELD = new HashMap<>();
-            ES_KEYWORD_FIELD.put("type", "keyword");
-            ES_KEYWORD_FIELD.put("normalizer", "atlan_normalizer");
-            HashMap<String, HashMap<String, Object>> KEYWORD_MULTIFIELD = new HashMap<>();
-            KEYWORD_MULTIFIELD.put("keyword", ES_KEYWORD_FIELD);
-
-            HashMap<String, Object> ES_KEYWORD_WO_NORMALIZER = new HashMap<>();
-            ES_KEYWORD_WO_NORMALIZER.put("type", "keyword");
-            HashMap<String, HashMap<String, Object>> KEYWORD_FIELD = new HashMap<>();
-            KEYWORD_FIELD.put("keyword", ES_KEYWORD_WO_NORMALIZER);
-
-            HashMap<String, Object> ES_GLOSSARY_ANALYZER_TEXT_FIELD = new HashMap<>();
-            ES_GLOSSARY_ANALYZER_TEXT_FIELD.put("type", "text");
-            ES_GLOSSARY_ANALYZER_TEXT_FIELD.put("analyzer", "atlan_glossary_analyzer");
-            HashMap<String, HashMap<String, Object>> ES_GLOSSARY_ANALYZER_MULTIFIELD = new HashMap<>();
-            ES_GLOSSARY_ANALYZER_MULTIFIELD.put("text", ES_GLOSSARY_ANALYZER_TEXT_FIELD);
-
-            HashMap<String, Object> ES_SPACE_ANALYZER_TEXT_FIELD = new HashMap<>();
-            ES_SPACE_ANALYZER_TEXT_FIELD.put("type", "text");
-            ES_SPACE_ANALYZER_TEXT_FIELD.put("analyzer", "whitespace");
-            HashMap<String, HashMap<String, Object>> ES_SPACE_ANALYZER_MULTIFIELD = new HashMap<>();
-            ES_SPACE_ANALYZER_MULTIFIELD.put("text", ES_SPACE_ANALYZER_TEXT_FIELD);
-
-            HashMap<String, Object> ES_ATLAN_TEXT_ANALYZER_CONFIG = new HashMap<>();
-            ES_ATLAN_TEXT_ANALYZER_CONFIG.put("analyzer", "atlan_text_analyzer");
-
-            HashMap<String, Object> ES_ATLAN_TEXT_COMMA_ANALYZER_CONFIG = new HashMap<>();
-            ES_ATLAN_TEXT_COMMA_ANALYZER_CONFIG.put("analyzer", "atlan_text_comma_analyzer");
-
-            // create vertex indexes
-            createCommonVertexIndex(management, GUID_PROPERTY_KEY, UniqueKind.GLOBAL_UNIQUE, String.class, SINGLE, true, false, true);
-            createCommonVertexIndex(management, HISTORICAL_GUID_PROPERTY_KEY, UniqueKind.GLOBAL_UNIQUE, String.class, SINGLE, true, false);
-            createCommonVertexIndex(management, QUALIFIED_NAME_HIERARCHY_PROPERTY_KEY, UniqueKind.NONE, String.class, SET, false, false, true);
-
-            createCommonVertexIndex(management, TYPENAME_PROPERTY_KEY, UniqueKind.GLOBAL_UNIQUE, String.class, SINGLE, true, false);
-            createCommonVertexIndex(management, TYPESERVICETYPE_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
-            createCommonVertexIndex(management, VERTEX_TYPE_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
-            createCommonVertexIndex(management, VERTEX_ID_IN_IMPORT_KEY, UniqueKind.NONE, Long.class, SINGLE, true, false);
-
-            createCommonVertexIndex(management, ENTITY_TYPE_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false, false, new HashMap<>(), KEYWORD_MULTIFIELD);
-            createCommonVertexIndex(management, SUPER_TYPES_PROPERTY_KEY, UniqueKind.NONE, String.class, SET, true, false, false, new HashMap<>(), KEYWORD_MULTIFIELD);
-            createCommonVertexIndex(management, TIMESTAMP_PROPERTY_KEY, UniqueKind.NONE, Long.class, SINGLE, false, false, false, new HashMap<>(), TIMESTAMP_MULTIFIELDS);
-            createCommonVertexIndex(management, MODIFICATION_TIMESTAMP_PROPERTY_KEY, UniqueKind.NONE, Long.class, SINGLE, false, false, false, new HashMap<>(), TIMESTAMP_MULTIFIELDS);
-            createCommonVertexIndex(management, STATE_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, false, false, true);
-            createCommonVertexIndex(management, CREATED_BY_KEY, UniqueKind.NONE, String.class, SINGLE, false, false, true);
-            createCommonVertexIndex(management, CLASSIFICATION_TEXT_KEY, UniqueKind.NONE, String.class, SINGLE, false, false, false, new HashMap<>(), ES_SPACE_ANALYZER_MULTIFIELD);
-            createCommonVertexIndex(management, MODIFIED_BY_KEY, UniqueKind.NONE, String.class, SINGLE, false, false, true);
-            createCommonVertexIndex(management, CLASSIFICATION_NAMES_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
-            createCommonVertexIndex(management, PROPAGATED_CLASSIFICATION_NAMES_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
-            createCommonVertexIndex(management, TRAIT_NAMES_PROPERTY_KEY, UniqueKind.NONE, String.class, SET, true, true, true);
-            createCommonVertexIndex(management, PROPAGATED_TRAIT_NAMES_PROPERTY_KEY, UniqueKind.NONE, String.class, LIST, true, true, true);
-            createCommonVertexIndex(management, PENDING_TASKS_PROPERTY_KEY, UniqueKind.NONE, String.class, SET, true, false);
-            createCommonVertexIndex(management, IS_INCOMPLETE_PROPERTY_KEY, UniqueKind.NONE, Integer.class, SINGLE, true, true);
-            createCommonVertexIndex(management, CUSTOM_ATTRIBUTES_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
-            createCommonVertexIndex(management, LABELS_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
-            createCommonVertexIndex(management, ENTITY_DELETED_TIMESTAMP_PROPERTY_KEY, UniqueKind.NONE, Long.class, SINGLE, true, false);
-
-            createCommonVertexIndex(management, PATCH_ID_PROPERTY_KEY, UniqueKind.GLOBAL_UNIQUE, String.class, SINGLE, true, false);
-            createCommonVertexIndex(management, PATCH_DESCRIPTION_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
-            createCommonVertexIndex(management, PATCH_TYPE_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
-            createCommonVertexIndex(management, PATCH_ACTION_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
-            createCommonVertexIndex(management, PATCH_STATE_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
-            createCommonVertexIndex(management, MEANINGS_PROPERTY_KEY, UniqueKind.NONE, String.class, SET, true, false, true);
-            createCommonVertexIndex(management, MEANINGS_TEXT_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false, false, ES_ATLAN_TEXT_COMMA_ANALYZER_CONFIG, new HashMap<>());
-            createCommonVertexIndex(management, MEANING_NAMES_PROPERTY_KEY, UniqueKind.NONE, String.class, LIST, true, false, true, new HashMap<>(), ES_GLOSSARY_ANALYZER_MULTIFIELD);
-            createCommonVertexIndex(management, GLOSSARY_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false, true);
-            createCommonVertexIndex(management, CATEGORIES_PROPERTY_KEY, UniqueKind.NONE, String.class, SET, true, false, true);
-            createCommonVertexIndex(management, CATEGORIES_PARENT_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false, true);
-
-
-            // tasks
-            createCommonVertexIndex(management, TASK_GUID, UniqueKind.GLOBAL_UNIQUE, String.class, SINGLE, true, false, false, new HashMap<>(), KEYWORD_FIELD);
-            createCommonVertexIndex(management, TASK_TYPE_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
-            createCommonVertexIndex(management, TASK_CREATED_TIME, UniqueKind.NONE, Long.class, SINGLE, true, false);
-            createCommonVertexIndex(management, TASK_STATUS, UniqueKind.NONE, String.class, SINGLE, true, false, false, new HashMap<>(), KEYWORD_FIELD);
-
-            createCommonVertexIndex(management, TASK_TYPE, UniqueKind.NONE, String.class, SINGLE, true, false, true);
-            createCommonVertexIndex(management, TASK_CREATED_BY, UniqueKind.NONE, String.class, SINGLE, false, false, true);
-            createCommonVertexIndex(management, TASK_CLASSIFICATION_ID, UniqueKind.NONE, String.class, SINGLE, false, false, true);
-            createCommonVertexIndex(management, TASK_CLASSIFICATION_TYPENAME, UniqueKind.NONE, String.class, SINGLE, false, false, true);
-            createCommonVertexIndex(management, TASK_ENTITY_GUID, UniqueKind.NONE, String.class, SINGLE, false, false, true);
-            createCommonVertexIndex(management, TASK_ERROR_MESSAGE, UniqueKind.NONE, String.class, SINGLE, false, false);
-            createCommonVertexIndex(management, TASK_ATTEMPT_COUNT, UniqueKind.NONE, Integer.class, SINGLE, false, false);
-
-            createCommonVertexIndex(management, TASK_UPDATED_TIME, UniqueKind.NONE, Long.class, SINGLE, false, false);
-            createCommonVertexIndex(management, TASK_TIME_TAKEN_IN_SECONDS, UniqueKind.NONE, Long.class, SINGLE, false, false);
-            createCommonVertexIndex(management, TASK_START_TIME, UniqueKind.NONE, Long.class, SINGLE, false, false);
-            createCommonVertexIndex(management, TASK_END_TIME, UniqueKind.NONE, Long.class, SINGLE, false, false);
-            createCommonVertexIndex(management, TASK_HEADER_ATLAN_AGENT, UniqueKind.NONE, String.class, SINGLE, false, false, true);
-            createCommonVertexIndex(management, TASK_HEADER_ATLAN_AGENT_ID, UniqueKind.NONE, String.class, SINGLE, false, false, true);
-            createCommonVertexIndex(management, TASK_HEADER_ATLAN_PKG_NAME, UniqueKind.NONE, String.class, SINGLE, false, false, true);
-            createCommonVertexIndex(management, TASK_HEADER_ATLAN_AGENT_WORKFLOW_ID, UniqueKind.NONE, String.class, SINGLE, false, false, true);
-            createCommonVertexIndex(management, TASK_HEADER_ATLAN_VIA_UI, UniqueKind.NONE, String.class, SINGLE, false, false, true);
-            createCommonVertexIndex(management, TASK_HEADER_ATLAN_REQUEST_ID, UniqueKind.NONE, String.class, SINGLE, false, false, true);
-            createCommonVertexIndex(management, TASK_HEADER_ATLAN_GOOGLE_SHEETS_ID, UniqueKind.NONE, String.class, SINGLE, false, false, true);
-            createCommonVertexIndex(management, TASK_HEADER_ATLAN_MS_EXCEL_ID, UniqueKind.NONE, String.class, SINGLE, false, false, true);
-            
-            // index recovery
-            createCommonVertexIndex(management, PROPERTY_KEY_INDEX_RECOVERY_NAME, UniqueKind.GLOBAL_UNIQUE, String.class, SINGLE, true, false);
-
-            // create vertex-centric index
-            createVertexCentricIndex(management, CLASSIFICATION_LABEL, AtlasEdgeDirection.BOTH, CLASSIFICATION_EDGE_NAME_PROPERTY_KEY, String.class, SINGLE);
-            createVertexCentricIndex(management, CLASSIFICATION_LABEL, AtlasEdgeDirection.BOTH, CLASSIFICATION_EDGE_IS_PROPAGATED_PROPERTY_KEY, Boolean.class, SINGLE);
-            createVertexCentricIndex(management, CLASSIFICATION_LABEL, AtlasEdgeDirection.BOTH, Arrays.asList(CLASSIFICATION_EDGE_NAME_PROPERTY_KEY, CLASSIFICATION_EDGE_IS_PROPAGATED_PROPERTY_KEY));
-
-            // create edge indexes
-            createEdgeIndex(management, RELATIONSHIP_GUID_PROPERTY_KEY, String.class, SINGLE, true, false);
-            createEdgeIndex(management, EDGE_ID_IN_IMPORT_KEY, String.class, SINGLE, true, false);
-            createEdgeIndex(management, ATTRIBUTE_INDEX_PROPERTY_KEY, Integer.class, SINGLE, true, false);
-
-            // create fulltext indexes
-            createFullTextIndex(management, ENTITY_TEXT_PROPERTY_KEY, String.class, SINGLE);
-
-            createPropertyKey(management, IS_PROXY_KEY, Boolean.class, SINGLE);
-            createPropertyKey(management, PROVENANCE_TYPE_KEY, Integer.class, SINGLE);
-            createPropertyKey(management, HOME_ID_KEY, String.class, SINGLE);
-
-            commit(management);
-
-            LOG.debug("Index creation for global keys complete.");
-        } catch (Throwable t) {
-            LOG.error("GraphBackedSearchIndexer.initialize() failed", t);
-
-            rollback(management);
-            throw new RepositoryException(t);
-        }
+//        AtlasGraphManagement management = graph.getManagementSystem();
+//
+//        try {
+//            LOG.debug("Creating indexes for graph.");
+//
+//            if (management.getGraphIndex(VERTEX_INDEX) == null) {
+//                management.createVertexMixedIndex(VERTEX_INDEX, BACKING_INDEX, Collections.emptyList());
+//
+//                LOG.debug("Created index : {}", VERTEX_INDEX);
+//            }
+//
+//            if (management.getGraphIndex(EDGE_INDEX) == null) {
+//                management.createEdgeMixedIndex(EDGE_INDEX, BACKING_INDEX, Collections.emptyList());
+//
+//                LOG.debug("Created index : {}", EDGE_INDEX);
+//            }
+//
+//            if (management.getGraphIndex(FULLTEXT_INDEX) == null) {
+//                management.createFullTextMixedIndex(FULLTEXT_INDEX, BACKING_INDEX, Collections.emptyList());
+//
+//                LOG.debug("Created index : {}", FULLTEXT_INDEX);
+//            }
+//
+//            HashMap<String, Object> ES_DATE_FIELD = new HashMap<>();
+//            ES_DATE_FIELD.put("type", "date");
+//            ES_DATE_FIELD.put("format", "epoch_millis");
+//            HashMap<String, HashMap<String, Object>> TIMESTAMP_MULTIFIELDS = new HashMap<>();
+//            TIMESTAMP_MULTIFIELDS.put("date", ES_DATE_FIELD);
+//
+//            HashMap<String, Object> ES_KEYWORD_FIELD = new HashMap<>();
+//            ES_KEYWORD_FIELD.put("type", "keyword");
+//            ES_KEYWORD_FIELD.put("normalizer", "atlan_normalizer");
+//            HashMap<String, HashMap<String, Object>> KEYWORD_MULTIFIELD = new HashMap<>();
+//            KEYWORD_MULTIFIELD.put("keyword", ES_KEYWORD_FIELD);
+//
+//            HashMap<String, Object> ES_KEYWORD_WO_NORMALIZER = new HashMap<>();
+//            ES_KEYWORD_WO_NORMALIZER.put("type", "keyword");
+//            HashMap<String, HashMap<String, Object>> KEYWORD_FIELD = new HashMap<>();
+//            KEYWORD_FIELD.put("keyword", ES_KEYWORD_WO_NORMALIZER);
+//
+//            HashMap<String, Object> ES_GLOSSARY_ANALYZER_TEXT_FIELD = new HashMap<>();
+//            ES_GLOSSARY_ANALYZER_TEXT_FIELD.put("type", "text");
+//            ES_GLOSSARY_ANALYZER_TEXT_FIELD.put("analyzer", "atlan_glossary_analyzer");
+//            HashMap<String, HashMap<String, Object>> ES_GLOSSARY_ANALYZER_MULTIFIELD = new HashMap<>();
+//            ES_GLOSSARY_ANALYZER_MULTIFIELD.put("text", ES_GLOSSARY_ANALYZER_TEXT_FIELD);
+//
+//            HashMap<String, Object> ES_SPACE_ANALYZER_TEXT_FIELD = new HashMap<>();
+//            ES_SPACE_ANALYZER_TEXT_FIELD.put("type", "text");
+//            ES_SPACE_ANALYZER_TEXT_FIELD.put("analyzer", "whitespace");
+//            HashMap<String, HashMap<String, Object>> ES_SPACE_ANALYZER_MULTIFIELD = new HashMap<>();
+//            ES_SPACE_ANALYZER_MULTIFIELD.put("text", ES_SPACE_ANALYZER_TEXT_FIELD);
+//
+//            HashMap<String, Object> ES_ATLAN_TEXT_ANALYZER_CONFIG = new HashMap<>();
+//            ES_ATLAN_TEXT_ANALYZER_CONFIG.put("analyzer", "atlan_text_analyzer");
+//
+//            HashMap<String, Object> ES_ATLAN_TEXT_COMMA_ANALYZER_CONFIG = new HashMap<>();
+//            ES_ATLAN_TEXT_COMMA_ANALYZER_CONFIG.put("analyzer", "atlan_text_comma_analyzer");
+//
+//            // create vertex indexes
+//            createCommonVertexIndex(management, GUID_PROPERTY_KEY, UniqueKind.GLOBAL_UNIQUE, String.class, SINGLE, true, false, true);
+//            createCommonVertexIndex(management, HISTORICAL_GUID_PROPERTY_KEY, UniqueKind.GLOBAL_UNIQUE, String.class, SINGLE, true, false);
+//            createCommonVertexIndex(management, QUALIFIED_NAME_HIERARCHY_PROPERTY_KEY, UniqueKind.NONE, String.class, SET, false, false, true);
+//
+//            createCommonVertexIndex(management, TYPENAME_PROPERTY_KEY, UniqueKind.GLOBAL_UNIQUE, String.class, SINGLE, true, false);
+//            createCommonVertexIndex(management, TYPESERVICETYPE_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
+//            createCommonVertexIndex(management, VERTEX_TYPE_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
+//            createCommonVertexIndex(management, VERTEX_ID_IN_IMPORT_KEY, UniqueKind.NONE, Long.class, SINGLE, true, false);
+//
+//            createCommonVertexIndex(management, ENTITY_TYPE_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false, false, new HashMap<>(), KEYWORD_MULTIFIELD);
+//            createCommonVertexIndex(management, SUPER_TYPES_PROPERTY_KEY, UniqueKind.NONE, String.class, SET, true, false, false, new HashMap<>(), KEYWORD_MULTIFIELD);
+//            createCommonVertexIndex(management, TIMESTAMP_PROPERTY_KEY, UniqueKind.NONE, Long.class, SINGLE, false, false, false, new HashMap<>(), TIMESTAMP_MULTIFIELDS);
+//            createCommonVertexIndex(management, MODIFICATION_TIMESTAMP_PROPERTY_KEY, UniqueKind.NONE, Long.class, SINGLE, false, false, false, new HashMap<>(), TIMESTAMP_MULTIFIELDS);
+//            createCommonVertexIndex(management, STATE_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, false, false, true);
+//            createCommonVertexIndex(management, CREATED_BY_KEY, UniqueKind.NONE, String.class, SINGLE, false, false, true);
+//            createCommonVertexIndex(management, CLASSIFICATION_TEXT_KEY, UniqueKind.NONE, String.class, SINGLE, false, false, false, new HashMap<>(), ES_SPACE_ANALYZER_MULTIFIELD);
+//            createCommonVertexIndex(management, MODIFIED_BY_KEY, UniqueKind.NONE, String.class, SINGLE, false, false, true);
+//            createCommonVertexIndex(management, CLASSIFICATION_NAMES_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
+//            createCommonVertexIndex(management, PROPAGATED_CLASSIFICATION_NAMES_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
+//            createCommonVertexIndex(management, TRAIT_NAMES_PROPERTY_KEY, UniqueKind.NONE, String.class, SET, true, true, true);
+//            createCommonVertexIndex(management, PROPAGATED_TRAIT_NAMES_PROPERTY_KEY, UniqueKind.NONE, String.class, LIST, true, true, true);
+//            createCommonVertexIndex(management, PENDING_TASKS_PROPERTY_KEY, UniqueKind.NONE, String.class, SET, true, false);
+//            createCommonVertexIndex(management, IS_INCOMPLETE_PROPERTY_KEY, UniqueKind.NONE, Integer.class, SINGLE, true, true);
+//            createCommonVertexIndex(management, CUSTOM_ATTRIBUTES_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
+//            createCommonVertexIndex(management, LABELS_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
+//            createCommonVertexIndex(management, ENTITY_DELETED_TIMESTAMP_PROPERTY_KEY, UniqueKind.NONE, Long.class, SINGLE, true, false);
+//
+//            createCommonVertexIndex(management, PATCH_ID_PROPERTY_KEY, UniqueKind.GLOBAL_UNIQUE, String.class, SINGLE, true, false);
+//            createCommonVertexIndex(management, PATCH_DESCRIPTION_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
+//            createCommonVertexIndex(management, PATCH_TYPE_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
+//            createCommonVertexIndex(management, PATCH_ACTION_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
+//            createCommonVertexIndex(management, PATCH_STATE_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
+//            createCommonVertexIndex(management, MEANINGS_PROPERTY_KEY, UniqueKind.NONE, String.class, SET, true, false, true);
+//            createCommonVertexIndex(management, MEANINGS_TEXT_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false, false, ES_ATLAN_TEXT_COMMA_ANALYZER_CONFIG, new HashMap<>());
+//            createCommonVertexIndex(management, MEANING_NAMES_PROPERTY_KEY, UniqueKind.NONE, String.class, LIST, true, false, true, new HashMap<>(), ES_GLOSSARY_ANALYZER_MULTIFIELD);
+//            createCommonVertexIndex(management, GLOSSARY_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false, true);
+//            createCommonVertexIndex(management, CATEGORIES_PROPERTY_KEY, UniqueKind.NONE, String.class, SET, true, false, true);
+//            createCommonVertexIndex(management, CATEGORIES_PARENT_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false, true);
+//
+//
+//            // tasks
+//            createCommonVertexIndex(management, TASK_GUID, UniqueKind.GLOBAL_UNIQUE, String.class, SINGLE, true, false, false, new HashMap<>(), KEYWORD_FIELD);
+//            createCommonVertexIndex(management, TASK_TYPE_PROPERTY_KEY, UniqueKind.NONE, String.class, SINGLE, true, false);
+//            createCommonVertexIndex(management, TASK_CREATED_TIME, UniqueKind.NONE, Long.class, SINGLE, true, false);
+//            createCommonVertexIndex(management, TASK_STATUS, UniqueKind.NONE, String.class, SINGLE, true, false, false, new HashMap<>(), KEYWORD_FIELD);
+//
+//            createCommonVertexIndex(management, TASK_TYPE, UniqueKind.NONE, String.class, SINGLE, true, false, true);
+//            createCommonVertexIndex(management, TASK_CREATED_BY, UniqueKind.NONE, String.class, SINGLE, false, false, true);
+//            createCommonVertexIndex(management, TASK_CLASSIFICATION_ID, UniqueKind.NONE, String.class, SINGLE, false, false, true);
+//            createCommonVertexIndex(management, TASK_CLASSIFICATION_TYPENAME, UniqueKind.NONE, String.class, SINGLE, false, false, true);
+//            createCommonVertexIndex(management, TASK_ENTITY_GUID, UniqueKind.NONE, String.class, SINGLE, false, false, true);
+//            createCommonVertexIndex(management, TASK_ERROR_MESSAGE, UniqueKind.NONE, String.class, SINGLE, false, false);
+//            createCommonVertexIndex(management, TASK_ATTEMPT_COUNT, UniqueKind.NONE, Integer.class, SINGLE, false, false);
+//
+//            createCommonVertexIndex(management, TASK_UPDATED_TIME, UniqueKind.NONE, Long.class, SINGLE, false, false);
+//            createCommonVertexIndex(management, TASK_TIME_TAKEN_IN_SECONDS, UniqueKind.NONE, Long.class, SINGLE, false, false);
+//            createCommonVertexIndex(management, TASK_START_TIME, UniqueKind.NONE, Long.class, SINGLE, false, false);
+//            createCommonVertexIndex(management, TASK_END_TIME, UniqueKind.NONE, Long.class, SINGLE, false, false);
+//            createCommonVertexIndex(management, TASK_HEADER_ATLAN_AGENT, UniqueKind.NONE, String.class, SINGLE, false, false, true);
+//            createCommonVertexIndex(management, TASK_HEADER_ATLAN_AGENT_ID, UniqueKind.NONE, String.class, SINGLE, false, false, true);
+//            createCommonVertexIndex(management, TASK_HEADER_ATLAN_PKG_NAME, UniqueKind.NONE, String.class, SINGLE, false, false, true);
+//            createCommonVertexIndex(management, TASK_HEADER_ATLAN_AGENT_WORKFLOW_ID, UniqueKind.NONE, String.class, SINGLE, false, false, true);
+//            createCommonVertexIndex(management, TASK_HEADER_ATLAN_VIA_UI, UniqueKind.NONE, String.class, SINGLE, false, false, true);
+//            createCommonVertexIndex(management, TASK_HEADER_ATLAN_REQUEST_ID, UniqueKind.NONE, String.class, SINGLE, false, false, true);
+//            createCommonVertexIndex(management, TASK_HEADER_ATLAN_GOOGLE_SHEETS_ID, UniqueKind.NONE, String.class, SINGLE, false, false, true);
+//            createCommonVertexIndex(management, TASK_HEADER_ATLAN_MS_EXCEL_ID, UniqueKind.NONE, String.class, SINGLE, false, false, true);
+//
+//            // index recovery
+//            createCommonVertexIndex(management, PROPERTY_KEY_INDEX_RECOVERY_NAME, UniqueKind.GLOBAL_UNIQUE, String.class, SINGLE, true, false);
+//
+//            // create vertex-centric index
+//            createVertexCentricIndex(management, CLASSIFICATION_LABEL, AtlasEdgeDirection.BOTH, CLASSIFICATION_EDGE_NAME_PROPERTY_KEY, String.class, SINGLE);
+//            createVertexCentricIndex(management, CLASSIFICATION_LABEL, AtlasEdgeDirection.BOTH, CLASSIFICATION_EDGE_IS_PROPAGATED_PROPERTY_KEY, Boolean.class, SINGLE);
+//            createVertexCentricIndex(management, CLASSIFICATION_LABEL, AtlasEdgeDirection.BOTH, Arrays.asList(CLASSIFICATION_EDGE_NAME_PROPERTY_KEY, CLASSIFICATION_EDGE_IS_PROPAGATED_PROPERTY_KEY));
+//
+//            // create edge indexes
+//            createEdgeIndex(management, RELATIONSHIP_GUID_PROPERTY_KEY, String.class, SINGLE, true, false);
+//            createEdgeIndex(management, EDGE_ID_IN_IMPORT_KEY, String.class, SINGLE, true, false);
+//            createEdgeIndex(management, ATTRIBUTE_INDEX_PROPERTY_KEY, Integer.class, SINGLE, true, false);
+//
+//            // create fulltext indexes
+//            createFullTextIndex(management, ENTITY_TEXT_PROPERTY_KEY, String.class, SINGLE);
+//
+//            createPropertyKey(management, IS_PROXY_KEY, Boolean.class, SINGLE);
+//            createPropertyKey(management, PROVENANCE_TYPE_KEY, Integer.class, SINGLE);
+//            createPropertyKey(management, HOME_ID_KEY, String.class, SINGLE);
+//
+//            commit(management);
+//
+//            LOG.debug("Index creation for global keys complete.");
+//        } catch (Throwable t) {
+//            LOG.error("GraphBackedSearchIndexer.initialize() failed", t);
+//
+//            rollback(management);
+//            throw new RepositoryException(t);
+//        }
     }
 
     private void resolveIndexFieldNames(AtlasGraphManagement managementSystem, ChangedTypeDefs changedTypeDefs) {

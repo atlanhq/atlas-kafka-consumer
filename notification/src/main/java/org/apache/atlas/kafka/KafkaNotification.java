@@ -17,6 +17,7 @@
  */
 package org.apache.atlas.kafka;
 
+import com.fasterxml.jackson.databind.deser.std.StringDeserializer;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.atlas.ApplicationProperties;
 import org.apache.atlas.AtlasConfiguration;
@@ -59,12 +60,14 @@ public class KafkaNotification extends AbstractNotification implements Service {
 
     public    static final String PROPERTY_PREFIX            = "atlas.kafka";
     public    static final String ATLAS_HOOK_TOPIC           = AtlasConfiguration.NOTIFICATION_HOOK_TOPIC_NAME.getString();
+    public    static final String OBJECT_PROP_EVENT_TOPIC           = AtlasConfiguration.OBJECT_PROP_EVENT_TOPIC_NAME.getString();
     public    static final String ATLAS_ENTITIES_TOPIC       = AtlasConfiguration.NOTIFICATION_ENTITIES_TOPIC_NAME.getString();
     public    static final String ATLAS_RELATIONSHIPS_TOPIC       = AtlasConfiguration.NOTIFICATION_RELATIONSHIPS_TOPIC_NAME.getString();
     public    static final String ATLAS_DISTRIBUTED_TASKS_TOPIC = AtlasConfiguration.NOTIFICATION_ATLAS_DISTRIBUTED_TASKS_TOPIC_NAME.getString();
     protected static final String CONSUMER_GROUP_ID_PROPERTY = "group.id";
 
     private   static final String[] ATLAS_HOOK_CONSUMER_TOPICS     = AtlasConfiguration.NOTIFICATION_HOOK_CONSUMER_TOPIC_NAMES.getStringArray(ATLAS_HOOK_TOPIC);
+    private   static final String[] ATLAS_OBJECT_PROP_CONSUMER_TOPICS     = AtlasConfiguration.OBJECT_PROP_EVENT_CONSUMER_TOPIC_NAMES.getStringArray(OBJECT_PROP_EVENT_TOPIC);
     private   static final String[] ATLAS_ENTITIES_CONSUMER_TOPICS = AtlasConfiguration.NOTIFICATION_ENTITIES_CONSUMER_TOPIC_NAMES.getStringArray(ATLAS_ENTITIES_TOPIC);
     private   static final String[] ATLAS_RELATIONSHIPS_CONSUMER_TOPICS = AtlasConfiguration.NOTIFICATION_RELATIONSHIPS_CONSUMER_TOPIC_NAMES.getStringArray(ATLAS_RELATIONSHIPS_TOPIC);
 
@@ -83,10 +86,12 @@ public class KafkaNotification extends AbstractNotification implements Service {
     private static final Map<NotificationType, String[]> CONSUMER_TOPICS_MAP = new HashMap<NotificationType, String[]>() {
         {
             put(NotificationType.HOOK, trimAndPurge(ATLAS_HOOK_CONSUMER_TOPICS));
+            put(NotificationType.OBJECT_PROP_EVENTS, trimAndPurge(ATLAS_OBJECT_PROP_CONSUMER_TOPICS));
             put(NotificationType.ENTITIES, trimAndPurge(ATLAS_ENTITIES_CONSUMER_TOPICS));
             put(NotificationType.RELATIONSHIPS, trimAndPurge(ATLAS_RELATIONSHIPS_CONSUMER_TOPICS));
         }
     };
+    public static final String ATLAS_CONSUMER = "atlas-consumer";
 
     private final Properties                                 properties;
     private final Long                                       pollTimeOutMs;
@@ -193,7 +198,7 @@ public class KafkaNotification extends AbstractNotification implements Service {
 
     @Override
     public <T> List<NotificationConsumer<T>> createConsumers(NotificationType notificationType, int numConsumers) {
-        return createConsumers(notificationType, numConsumers, Boolean.valueOf(properties.getProperty("enable.auto.commit", properties.getProperty("auto.commit.enable","false"))));
+        return createConsumers(notificationType, numConsumers, Boolean.valueOf(properties.getProperty("enable.auto.commit", properties.getProperty("auto.commit.enable","true"))));
     }
 
     @VisibleForTesting
@@ -315,14 +320,13 @@ public class KafkaNotification extends AbstractNotification implements Service {
     public Properties getConsumerProperties(NotificationType notificationType) {
         // find the configured group id for the given notification type
         String groupId = properties.getProperty(notificationType.toString().toLowerCase() + "." + CONSUMER_GROUP_ID_PROPERTY);
-
         if (StringUtils.isEmpty(groupId)) {
-            throw new IllegalStateException("No configuration group id set for the notification type " + notificationType);
+            groupId = ATLAS_CONSUMER;
         }
 
         Properties consumerProperties = new Properties();
-
         consumerProperties.putAll(properties);
+        consumerProperties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "10");
         consumerProperties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
 
         return consumerProperties;

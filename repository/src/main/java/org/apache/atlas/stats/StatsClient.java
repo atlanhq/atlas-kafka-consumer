@@ -31,7 +31,10 @@ import org.springframework.stereotype.Component;
 
 import javax.inject.Singleton;
 
+//@Singleton
 @Singleton
+//@Component
+//@Order(7)
 @Component
 @Order(7)
 public class StatsClient implements Service {

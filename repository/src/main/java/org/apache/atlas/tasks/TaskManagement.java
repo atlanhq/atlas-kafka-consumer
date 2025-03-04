@@ -42,6 +42,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+//@Component
+//@Order(7)
 @Component
 @Order(7)
 public class TaskManagement implements Service, ActiveStateChangeHandler {
@@ -88,15 +90,16 @@ public class TaskManagement implements Service, ActiveStateChangeHandler {
 
     @Override
     public void start() throws AtlasException {
-        try {
-            if (configuration == null || !HAConfiguration.isHAEnabled(configuration)) {
-                startInternal();
-            } else {
-                LOG.info("TaskManagement.start(): deferring until instance activation");
-            }
-        } catch (Exception e) {
-            throw e;
-        }
+//        try {
+//            if (configuration == null || !HAConfiguration.isHAEnabled(configuration)) {
+//                startInternal();
+//            } else {
+//                LOG.info("TaskManagement.start(): deferring until instance activation");
+//            }
+//        } catch (Exception e) {
+//            throw e;
+//        }
+        stop();
     }
 
     public boolean isWatcherActive() {
