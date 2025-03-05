@@ -99,7 +99,7 @@ public class TaskManagement implements Service, ActiveStateChangeHandler {
 //        } catch (Exception e) {
 //            throw e;
 //        }
-        stop();
+//        stop();
     }
 
     public boolean isWatcherActive() {
