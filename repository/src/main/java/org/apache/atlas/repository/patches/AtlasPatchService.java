@@ -32,8 +32,8 @@ import javax.inject.Inject;
 
 //@Component
 //@Order(3)
-//@Component
-//@Order(3)
+@Component
+@Order(3)
 public class AtlasPatchService implements Service, ActiveStateChangeHandler {
     private static final Logger LOG = LoggerFactory.getLogger(AtlasPatchService.class);
 
