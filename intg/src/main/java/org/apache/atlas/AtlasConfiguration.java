@@ -44,7 +44,7 @@ public enum AtlasConfiguration {
     NOTIFICATION_ATLAS_DISTRIBUTED_TASKS_TOPIC_NAME("atlas.notification.distributed.tasks.topic.name", "ATLAS_DISTRIBUTED_TASKS"),
 
     NOTIFICATION_HOOK_CONSUMER_TOPIC_NAMES("atlas.notification.hook.consumer.topic.names", "ATLAS_HOOK"), //  a comma separated list of topic names
-    OBJECT_PROP_EVENT_CONSUMER_TOPIC_NAMES("atlas.notification.hook.consumer.topic.names", "OBJECT_PROP_EVENTS"), //  a comma separated list of topic names
+    OBJECT_PROP_EVENT_CONSUMER_TOPIC_NAMES("atlas.notification.object_prop.consumer.topic.names", "OBJECT_PROP_EVENTS"), //  a comma separated list of topic names
     NOTIFICATION_ENTITIES_CONSUMER_TOPIC_NAMES("atlas.notification.entities.consumer.topic.names", "ATLAS_ENTITIES"), //  a comma separated list of topic names
     NOTIFICATION_RELATIONSHIPS_CONSUMER_TOPIC_NAMES("atlas.notification.relationships.consumer.topic.names", "ATLAS_RELATIONSHIPS"), //  a comma separated list of topic names
 
