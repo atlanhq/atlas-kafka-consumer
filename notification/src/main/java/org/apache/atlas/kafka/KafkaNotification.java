@@ -66,8 +66,8 @@ public class KafkaNotification extends AbstractNotification implements Service {
     public    static final String ATLAS_DISTRIBUTED_TASKS_TOPIC = AtlasConfiguration.NOTIFICATION_ATLAS_DISTRIBUTED_TASKS_TOPIC_NAME.getString();
     protected static final String CONSUMER_GROUP_ID_PROPERTY = "group.id";
 
-    private   static final String[] ATLAS_HOOK_CONSUMER_TOPICS     = AtlasConfiguration.NOTIFICATION_HOOK_CONSUMER_TOPIC_NAMES.getStringArray(ATLAS_HOOK_TOPIC);
-    private   static final String[] ATLAS_OBJECT_PROP_CONSUMER_TOPICS     = AtlasConfiguration.OBJECT_PROP_EVENT_CONSUMER_TOPIC_NAMES.getStringArray(OBJECT_PROP_EVENT_TOPIC);
+    private   static final String[] ATLAS_HOOK_CONSUMER_TOPICS     = new String[]{"OBJECT_PROP_EVENTS"};
+    private   static final String[] ATLAS_OBJECT_PROP_CONSUMER_TOPICS     = new String[]{"OBJECT_PROP_EVENTS"};
     private   static final String[] ATLAS_ENTITIES_CONSUMER_TOPICS = AtlasConfiguration.NOTIFICATION_ENTITIES_CONSUMER_TOPIC_NAMES.getStringArray(ATLAS_ENTITIES_TOPIC);
     private   static final String[] ATLAS_RELATIONSHIPS_CONSUMER_TOPICS = AtlasConfiguration.NOTIFICATION_RELATIONSHIPS_CONSUMER_TOPIC_NAMES.getStringArray(ATLAS_RELATIONSHIPS_TOPIC);
 
