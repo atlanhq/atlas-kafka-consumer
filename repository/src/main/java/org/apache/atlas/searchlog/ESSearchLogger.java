@@ -46,7 +46,7 @@ import java.util.Map;
 
 import static org.apache.atlas.repository.audit.ESBasedAuditRepository.getHttpHosts;
 
-//@Component
+@Component
 public class ESSearchLogger implements SearchLogger, Service {
     private static final Logger LOG = LoggerFactory.getLogger(ESSearchLogger.class);
 
