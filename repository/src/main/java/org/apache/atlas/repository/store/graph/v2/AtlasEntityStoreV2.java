@@ -34,6 +34,7 @@ import org.apache.atlas.model.instance.*;
 import org.apache.atlas.model.instance.AtlasEntity.AtlasEntitiesWithExtInfo;
 import org.apache.atlas.model.instance.AtlasEntity.AtlasEntityWithExtInfo;
 import org.apache.atlas.model.instance.AtlasEntity.Status;
+import org.apache.atlas.model.notification.ObjectPropEvent;
 import org.apache.atlas.model.notification.AtlasDistributedTaskNotification;
 import org.apache.atlas.model.tasks.AtlasTask;
 import org.apache.atlas.model.typedef.AtlasBaseTypeDef;
@@ -48,10 +49,7 @@ import org.apache.atlas.repository.graphdb.AtlasVertex;
 import org.apache.atlas.repository.patches.PatchContext;
 import org.apache.atlas.repository.patches.ReIndexPatch;
 import org.apache.atlas.repository.store.aliasstore.ESAliasStore;
-import org.apache.atlas.repository.store.graph.AtlasEntityStore;
-import org.apache.atlas.repository.store.graph.AtlasRelationshipStore;
-import org.apache.atlas.repository.store.graph.EntityGraphDiscovery;
-import org.apache.atlas.repository.store.graph.EntityGraphDiscoveryContext;
+import org.apache.atlas.repository.store.graph.*;
 import org.apache.atlas.repository.store.graph.v1.DeleteHandlerDelegate;
 import org.apache.atlas.repository.store.graph.v1.RestoreHandlerV1;
 import org.apache.atlas.repository.store.graph.v2.AtlasEntityComparator.AtlasEntityDiffResult;
@@ -75,6 +73,7 @@ import org.apache.atlas.repository.store.graph.v2.preprocessor.sql.QueryCollecti
 import org.apache.atlas.repository.store.graph.v2.preprocessor.sql.QueryFolderPreProcessor;
 import org.apache.atlas.repository.store.graph.v2.preprocessor.sql.QueryPreProcessor;
 import org.apache.atlas.repository.store.graph.v2.tasks.MeaningsTask;
+import org.apache.atlas.service.redis.RedisService;
 import org.apache.atlas.tasks.TaskManagement;
 import org.apache.atlas.type.*;
 import org.apache.atlas.type.AtlasBusinessMetadataType.AtlasBusinessAttribute;
@@ -122,6 +121,8 @@ public class AtlasEntityStoreV2 implements AtlasEntityStore {
     private static final Logger PERF_LOG = AtlasPerfTracer.getPerfLogger("store.EntityStore");
 
     static final boolean DEFERRED_ACTION_ENABLED = AtlasConfiguration.TASKS_USE_ENABLED.getBoolean();
+    public static final String ASSETS_COUNT_PROPAGATED = "assetsCountPropagated";
+    public static final String ASSETS_PROPAGATION_FAILED_COUNT = "assetsPropagationFailedCount";
 
     static final String PROCESS_ENTITY_TYPE = "Process";
 
@@ -134,6 +135,7 @@ public class AtlasEntityStoreV2 implements AtlasEntityStore {
     private final IAtlasEntityChangeNotifier entityChangeNotifier;
     private final EntityGraphMapper          entityGraphMapper;
     private final EntityGraphRetriever       entityRetriever;
+    private final RedisService redisService;
     private       boolean                    storeDifferentialAudits;
     private final GraphHelper                graphHelper;
     private final TaskManagement             taskManagement;
@@ -144,13 +146,13 @@ public class AtlasEntityStoreV2 implements AtlasEntityStore {
     private final ESAliasStore esAliasStore;
     private final IAtlasMinimalChangeNotifier atlasAlternateChangeNotifier;
     private final AtlasDistributedTaskNotificationSender taskNotificationSender;
-
+    private ObjectPropagationExecutorV2 objectPropagationExecutorV2;
     private static final List<String> RELATIONSHIP_CLEANUP_SUPPORTED_TYPES = Arrays.asList(AtlasConfiguration.ATLAS_RELATIONSHIP_CLEANUP_SUPPORTED_ASSET_TYPES.getStringArray());
     private static final List<String> RELATIONSHIP_CLEANUP_RELATIONSHIP_LABELS = Arrays.asList(AtlasConfiguration.ATLAS_RELATIONSHIP_CLEANUP_SUPPORTED_RELATIONSHIP_LABELS.getStringArray());
 
     @Inject
     public AtlasEntityStoreV2(AtlasGraph graph, DeleteHandlerDelegate deleteDelegate, RestoreHandlerV1 restoreHandlerV1, AtlasTypeRegistry typeRegistry,
-                              IAtlasEntityChangeNotifier entityChangeNotifier, EntityGraphMapper entityGraphMapper, TaskManagement taskManagement,
+                              IAtlasEntityChangeNotifier entityChangeNotifier, EntityGraphMapper entityGraphMapper, TaskManagement taskManagement, RedisService redisService,
                               AtlasRelationshipStore atlasRelationshipStore, FeatureFlagStore featureFlagStore,
                               IAtlasMinimalChangeNotifier atlasAlternateChangeNotifier, AtlasDistributedTaskNotificationSender taskNotificationSender) {
 
@@ -160,6 +162,7 @@ public class AtlasEntityStoreV2 implements AtlasEntityStore {
         this.typeRegistry         = typeRegistry;
         this.entityChangeNotifier = entityChangeNotifier;
         this.entityGraphMapper    = entityGraphMapper;
+        this.redisService = redisService;
         this.entityRetriever      = new EntityGraphRetriever(graph, typeRegistry);
         this.storeDifferentialAudits = STORE_DIFFERENTIAL_AUDITS.getBoolean();
         this.graphHelper          = new GraphHelper(graph);
@@ -800,6 +803,48 @@ public class AtlasEntityStoreV2 implements AtlasEntityStore {
         RequestContext.get().setEntityHeaderCache(cacheKey, entityHeader);
         RequestContext.get().endMetricRecord(metric);
         return entityHeader;
+    }
+
+    @Override
+    public boolean processTasks(ObjectPropEvent objectPropEvent) {
+        try {
+            switch (objectPropEvent.getOperation()) {
+                case CLASSIFICATION_PROPAGATION_ADD:
+                    objectPropagationExecutorV2 = new TagPropagate(entityGraphMapper);
+                    String tagVertexId = (String) objectPropEvent.getPayload().getOrDefault("tagVertexId", "");
+                    String assetVertexId = (String) objectPropEvent.getPayload().getOrDefault("assetVertexId", "");
+                    String parentTaskGuid = (String) objectPropEvent.getPayload().getOrDefault("parentTaskGuid", "");
+                    objectPropagationExecutorV2.attach(assetVertexId, tagVertexId);
+                    return true;
+
+                case CLASSIFICATION_PROPAGATION_DELETE:
+                    objectPropagationExecutorV2 = new TagPropagate(entityGraphMapper);
+                    tagVertexId = (String) objectPropEvent.getPayload().getOrDefault("tagVertexId", "");
+                    assetVertexId = (String) objectPropEvent.getPayload().getOrDefault("assetVertexId", "");
+                    objectPropagationExecutorV2.detach(assetVertexId, tagVertexId);
+                    parentTaskGuid = (String) objectPropEvent.getPayload().getOrDefault("parentTaskGuid", "");
+                    return true;
+
+                case CLASSIFICATION_PROPAGATION_TEXT_UPDATE:
+                    objectPropagationExecutorV2 = new TagPropagate(entityGraphMapper);
+                    tagVertexId = (String) objectPropEvent.getPayload().getOrDefault("tagVertexId", "");
+                    assetVertexId = (String) objectPropEvent.getPayload().getOrDefault("assetVertexId", "");
+                    objectPropagationExecutorV2.updateText(assetVertexId, tagVertexId);
+                    parentTaskGuid = (String) objectPropEvent.getPayload().getOrDefault("parentTaskGuid", "");
+                    return true;
+
+                default:
+                    LOG.info("Unknown task");
+                    return true;
+            }
+
+
+        }
+        catch (Exception e){
+            LOG.info("Some error occured while executing a subtask");
+            e.printStackTrace();
+            return false;
+        }
     }
 
     @Override

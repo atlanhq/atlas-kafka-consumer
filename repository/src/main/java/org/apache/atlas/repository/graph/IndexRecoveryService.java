@@ -46,8 +46,10 @@ import static org.apache.atlas.ApplicationProperties.DEFAULT_INDEX_RECOVERY;
 import static org.apache.atlas.repository.Constants.*;
 import static org.apache.atlas.repository.store.graph.v2.AtlasGraphUtilsV2.setEncodedProperty;
 
-@Component
-@Order(8)
+//@Component
+//@Order(8)
+//@Component
+//@Order(8)
 public class IndexRecoveryService implements Service, ActiveStateChangeHandler {
     private static final Logger LOG                                       = LoggerFactory.getLogger(IndexRecoveryService.class);
     private static final String DATE_FORMAT                               = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";

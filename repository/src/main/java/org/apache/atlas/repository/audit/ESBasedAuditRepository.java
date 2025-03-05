@@ -102,9 +102,15 @@ public class ESBasedAuditRepository extends AbstractStorageBasedAuditRepository 
     private EntityGraphRetriever entityGraphRetriever;
 
     @Inject
-    public ESBasedAuditRepository(Configuration configuration, EntityGraphRetriever entityGraphRetriever) {
+    public ESBasedAuditRepository(Configuration configuration, EntityGraphRetriever entityGraphRetriever){
         this.configuration = configuration;
         this.entityGraphRetriever = entityGraphRetriever;
+        try {
+            setLowLevelClient();
+        } catch (AtlasException e) {
+            throw new RuntimeException(e);
+        }
+//        this.lowLevelClient = lowLevelClient;
     }
 
     @Override
