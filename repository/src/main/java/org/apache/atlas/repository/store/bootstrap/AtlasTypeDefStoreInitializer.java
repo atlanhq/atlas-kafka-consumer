@@ -85,11 +85,10 @@ import static org.apache.atlas.model.patches.AtlasPatch.PatchStatus.UNKNOWN;
 
 /**
  * Class that handles initial loading of models and patches into typedef store
+ * DO NOT DISABLE THIS, typeRegistry is populated through this only
  */
-//@Service
-//@Order(2)
-//@Service
-//@Order(2)
+@Service
+@Order(2)
 public class AtlasTypeDefStoreInitializer implements ActiveStateChangeHandler {
     public static final Logger LOG                    = LoggerFactory.getLogger(AtlasTypeDefStoreInitializer.class);
     public static final String PATCHES_FOLDER_NAME    = "patches";

@@ -1382,6 +1382,12 @@ public class EntityGraphRetriever {
     private void mapAttributes(AtlasVertex entityVertex, AtlasStruct struct, AtlasEntityExtInfo entityExtInfo, boolean isMinExtInfo, boolean includeReferences) throws AtlasBaseException {
         AtlasPerfMetrics.MetricRecorder metricRecorder = RequestContext.get().startMetricRecord("mapAttributes");
         AtlasType objType = typeRegistry.getType(struct.getTypeName());
+//        int retryCount = 0;
+//        while(objType == null && retryCount < 3){
+//            typeDefStore.init();
+//            retryCount++;
+//            objType = typeRegistry.getType(struct.getTypeName());
+//        }
 
         if (!(objType instanceof AtlasStructType)) {
             throw new AtlasBaseException(AtlasErrorCode.TYPE_NAME_INVALID, struct.getTypeName());

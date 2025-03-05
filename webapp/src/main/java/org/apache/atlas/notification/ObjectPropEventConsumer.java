@@ -362,7 +362,7 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
                                 consumer.commit(msg.getTopicPartition(), commitOffset);
                                 subTaskSuccess++;
                             } else {
-                                subTaskFail++;
+                                subTaskFail++; // Add the retry mechanism here
                             }
                         }
                         if(subTaskSuccess > 0) {

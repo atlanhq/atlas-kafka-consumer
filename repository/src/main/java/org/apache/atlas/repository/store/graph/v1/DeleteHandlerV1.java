@@ -469,7 +469,8 @@ public abstract class DeleteHandlerV1 {
 
             return null;
         }
-        if (getPropagatedClassificationEdge(entityVertex, classificationVertex) != null) {
+        AtlasEdge propagatedClassificationEdge = getPropagatedClassificationEdge(entityVertex, classificationVertex);
+        if (propagatedClassificationEdge != null) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug(" --> Propagated classification edge already exists from [{}] --> [{}][{}] using edge label: [{}]",
                         getTypeName(entityVertex), getTypeName(classificationVertex), getTypeName(associatedEntityVertex), CLASSIFICATION_LABEL);
