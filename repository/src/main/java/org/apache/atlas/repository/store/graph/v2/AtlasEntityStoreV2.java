@@ -812,25 +812,25 @@ public class AtlasEntityStoreV2 implements AtlasEntityStore {
                 case CLASSIFICATION_PROPAGATION_ADD:
                     objectPropagationExecutorV2 = new TagPropagate(entityGraphMapper);
                     String tagVertexId = (String) objectPropEvent.getPayload().getOrDefault("tagVertexId", "");
-                    String assetVertexId = (String) objectPropEvent.getPayload().getOrDefault("assetVertexId", "");
-                    String parentTaskGuid = (String) objectPropEvent.getPayload().getOrDefault("parentTaskGuid", "");
+                    String assetVertexId = (String) objectPropEvent.getPayload().getOrDefault("assetGuid", "");
+                    String parentTaskGuid = (String) objectPropEvent.getPayload().getOrDefault("parentTaskVertexId", "");
                     objectPropagationExecutorV2.attach(assetVertexId, tagVertexId);
                     return true;
 
                 case CLASSIFICATION_PROPAGATION_DELETE:
                     objectPropagationExecutorV2 = new TagPropagate(entityGraphMapper);
                     tagVertexId = (String) objectPropEvent.getPayload().getOrDefault("tagVertexId", "");
-                    assetVertexId = (String) objectPropEvent.getPayload().getOrDefault("assetVertexId", "");
+                    assetVertexId = (String) objectPropEvent.getPayload().getOrDefault("assetGuid", "");
                     objectPropagationExecutorV2.detach(assetVertexId, tagVertexId);
-                    parentTaskGuid = (String) objectPropEvent.getPayload().getOrDefault("parentTaskGuid", "");
+                    parentTaskGuid = (String) objectPropEvent.getPayload().getOrDefault("parentTaskVertexId", "");
                     return true;
 
                 case CLASSIFICATION_PROPAGATION_TEXT_UPDATE:
                     objectPropagationExecutorV2 = new TagPropagate(entityGraphMapper);
                     tagVertexId = (String) objectPropEvent.getPayload().getOrDefault("tagVertexId", "");
-                    assetVertexId = (String) objectPropEvent.getPayload().getOrDefault("assetVertexId", "");
+                    assetVertexId = (String) objectPropEvent.getPayload().getOrDefault("assetGuid", "");
                     objectPropagationExecutorV2.updateText(assetVertexId, tagVertexId);
-                    parentTaskGuid = (String) objectPropEvent.getPayload().getOrDefault("parentTaskGuid", "");
+                    parentTaskGuid = (String) objectPropEvent.getPayload().getOrDefault("parentTaskVertexId", "");
                     return true;
 
                 default:
