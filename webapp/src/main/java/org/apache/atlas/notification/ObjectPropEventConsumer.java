@@ -353,16 +353,21 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
 
             try {
                 while (shouldRun.get()) {
+                    LOG.info("Running the consumer poller");
                     try {
                         List<AtlasKafkaMessage<ObjectPropEvent>> messages = consumer.receiveWithCheckedCommit(lastCommittedPartitionOffset);
+                        LOG.info("Messages recvd : {}", messages.size());
                         for (AtlasKafkaMessage<ObjectPropEvent> msg : messages) {
+                            LOG.info("Msg consumed on offset : {} with value : {}", msg.getOffset(), msg.toString());
                             boolean res = atlasEntityStore.processTasks(msg.getMessage());
                             if(res) {
                                 long commitOffset = msg.getOffset() + 1;
                                 consumer.commit(msg.getTopicPartition(), commitOffset);
                                 subTaskSuccess++;
+                                LOG.info("Message processed sucessfully");
                             } else {
                                 subTaskFail++; // Add the retry mechanism here
+                                LOG.info("Message processing failed");
                             }
                         }
                         if(subTaskSuccess > 0) {
