@@ -104,10 +104,10 @@ public class AtlasKafkaConsumer<T> extends AbstractNotificationConsumer<T> {
         ConsumerRecords<?, ?> records = kafkaConsumer != null ? kafkaConsumer.poll(timeoutMilliSeconds) : null;
 
         if (records != null) {
-            LOG.info("Found kafkaRecords : {}", records.count());
+            LOG.info("ObjectPropagate -> Found kafkaRecords : {}", records.count());
             for (ConsumerRecord<?, ?> record : records) {
 //                if (LOG.isDebugEnabled()) {
-                    LOG.info("Received Message topic ={}, partition ={}, offset = {}, key = {}, value = {}",
+                    LOG.info("ObjectPropagate -> Received Message topic ={}, partition ={}, offset = {}, key = {}, value = {}",
                             record.topic(), record.partition(), record.offset(), record.key(), record.value());
 //                }
 
@@ -117,7 +117,7 @@ public class AtlasKafkaConsumer<T> extends AbstractNotificationConsumer<T> {
                         && record.offset() < lastCommittedPartitionOffset.get(topicPartition)) {
 
                     commit(topicPartition, record.offset());
-                    LOG.info("Skipping already processed message: topic={}, partition={} offset={}. Last processed offset={}",
+                    LOG.info("ObjectPropagate -> Skipping already processed message: topic={}, partition={} offset={}. Last processed offset={}",
                                 record.topic(), record.partition(), record.offset(), lastCommittedPartitionOffset.get(topicPartition));
                     continue;
                 }
@@ -125,9 +125,9 @@ public class AtlasKafkaConsumer<T> extends AbstractNotificationConsumer<T> {
                 T message = null;
 
                 try {
-                    LOG.info("Message converting to kafkaMessage");
+                    LOG.info("ObjectPropagate -> Message converting to kafkaMessage");
                     message = deserializer.deserialize(record.value().toString());
-                    LOG.info("Message converted to kafkaMessage : {}", message.toString());
+                    LOG.info("ObjectPropagate -> Message converted to kafkaMessage : {}", message.toString());
                 } catch (OutOfMemoryError excp) {
                     LOG.error("Ignoring message that failed to deserialize: topic={}, partition={}, offset={}, key={}, value={}",
                             record.topic(), record.partition(), record.offset(), record.key(), record.value(), excp);
@@ -136,7 +136,7 @@ public class AtlasKafkaConsumer<T> extends AbstractNotificationConsumer<T> {
                 if (message == null) {
                     continue;
                 }
-                LOG.info("Message added to kafkaMessage batch");
+                LOG.info("ObjectPropagate -> Message added to kafkaMessage batch");
                 messages.add(new AtlasKafkaMessage(message, record.offset(), record.topic(), record.partition(),
                                                             deserializer.getMsgCreated(), deserializer.getSpooled()));
             }

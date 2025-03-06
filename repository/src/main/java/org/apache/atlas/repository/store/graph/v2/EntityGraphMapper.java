@@ -3538,41 +3538,63 @@ public class EntityGraphMapper {
     }
 
     // TODO : HR : Changing method to cater to ony single propagation attachment. Dev->DONE Testing->PENDING
-    public void processClassificationPropagationAddition(String entityGuid, String classificationVertexId) throws AtlasBaseException{
+    public void processClassificationPropagationAddition(String entityGuid, String classificationVertexId) throws AtlasBaseException {
+        LOG.info("ObjectPropagate ==> processClassificationPropagationAddition(entityGuid={}, classificationVertexId={})", entityGuid, classificationVertexId);
+
         AtlasPerfMetrics.MetricRecorder classificationPropagationMetricRecorder = RequestContext.get().startMetricRecord("processClassificationPropagationAddition");
         AtlasVertex classificationVertex = graph.getVertex(classificationVertexId);
+        LOG.info("ObjectPropagate Retrieved classification vertex for ID: {}", classificationVertexId);
+
         AtlasVertex vertexToPropagate = null;
+
         try {
             vertexToPropagate = graphHelper.getVertexForGUID(entityGuid);
+            LOG.info("ObjectPropagate Retrieved vertex to propagate for entity GUID: {}", entityGuid);
         } catch (EntityNotFoundException e) {
+            LOG.error("ObjectPropagate Vertex not found for GUID: {}", entityGuid, e);
             throw new AtlasBaseException(AtlasErrorCode.INSTANCE_GUID_NOT_FOUND);
         }
+
         try {
-            AtlasPerfMetrics.MetricRecorder metricRecorder  = RequestContext.get().startMetricRecord("lockObjectsAfterTraverse");
+            AtlasPerfMetrics.MetricRecorder metricRecorder = RequestContext.get().startMetricRecord("lockObjectsAfterTraverse");
             String vertexGuid = GraphHelper.getGuid(vertexToPropagate);
+
+            LOG.info("ObjectPropagate Locking object and releasing post commit for vertexGuid={}", vertexGuid);
             GraphTransactionInterceptor.lockObjectAndReleasePostCommit(vertexGuid);
             RequestContext.get().endMetricRecord(metricRecorder);
 
-            AtlasClassification classification       = entityRetriever.toAtlasClassification(classificationVertex);
-            AtlasVertex   entityPropagatedTo = deleteDelegate.getHandler().addTagPropagation(classificationVertex, vertexToPropagate);
+            AtlasClassification classification = entityRetriever.toAtlasClassification(classificationVertex);
+            LOG.info("ObjectPropagate Converted classification vertex to AtlasClassification: {}", classification.getTypeName());
+
+            AtlasVertex entityPropagatedTo = deleteDelegate.getHandler().addTagPropagation(classificationVertex, vertexToPropagate);
+            LOG.info("ObjectPropagate Result of addTagPropagation -> entityPropagatedTo: {}",
+                    (entityPropagatedTo != null ? entityPropagatedTo.getIdForDisplay() : "null"));
 
             if (Objects.isNull(entityPropagatedTo)) {
+                LOG.info("ObjectPropagate No entity found to propagate classification. Exiting.");
                 return;
             }
 
-            AtlasEntity   propagatedEntity       = updateClassificationText(entityPropagatedTo);
-            entityChangeNotifier.onClassificationsAddedToEntities(Collections.singletonList(propagatedEntity), Collections.singletonList(classification), false);
+            AtlasEntity propagatedEntity = updateClassificationText(entityPropagatedTo);
+            LOG.info("ObjectPropagate Updated classification text on entity with GUID: {}", GraphHelper.getGuid(entityPropagatedTo));
 
+            entityChangeNotifier.onClassificationsAddedToEntities(Collections.singletonList(propagatedEntity),
+                    Collections.singletonList(classification),
+                    false);
+            LOG.info("ObjectPropagate Notified classification addition to entity.");
 
             transactionInterceptHelper.intercept();
+            LOG.info("ObjectPropagate transactionInterceptHelper.intercept() executed.");
         } catch (AtlasBaseException exception) {
-            LOG.error("Error occurred while adding classification propagation for classification with propagation id {}", classificationVertex.getIdForDisplay());
+            LOG.error("ObjectPropagate Error occurred while adding classification propagation for classification with propagation id {}",
+                    classificationVertex.getIdForDisplay(), exception);
             throw exception;
         } finally {
             RequestContext.get().endMetricRecord(classificationPropagationMetricRecorder);
+            LOG.info("ObjectPropagate <== processClassificationPropagationAddition(entityGuid={}, classificationVertexId={})", entityGuid, classificationVertexId);
         }
-
     }
+
 
     public List<String> processClassificationPropagationAddition(List<AtlasVertex> verticesToPropagate, AtlasVertex classificationVertex) throws AtlasBaseException{
         AtlasPerfMetrics.MetricRecorder classificationPropagationMetricRecorder = RequestContext.get().startMetricRecord("processClassificationPropagationAddition");
