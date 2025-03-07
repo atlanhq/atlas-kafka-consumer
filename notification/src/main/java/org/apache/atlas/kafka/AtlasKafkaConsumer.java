@@ -99,17 +99,26 @@ public class AtlasKafkaConsumer<T> extends AbstractNotificationConsumer<T> {
     }
 
     private List<AtlasKafkaMessage<T>> receive(long timeoutMilliSeconds, Map<TopicPartition, Long> lastCommittedPartitionOffset) {
-        List<AtlasKafkaMessage<T>> messages = new ArrayList();
+        long methodStart = System.currentTimeMillis();
+        long stepStart = methodStart; // For individual steps timing
 
+        List<AtlasKafkaMessage<T>> messages = new ArrayList<>();
+        LOG.info("receive() => Start of method at {} ms", methodStart);
+
+        // Poll for records
         ConsumerRecords<?, ?> records = kafkaConsumer != null ? kafkaConsumer.poll(timeoutMilliSeconds) : null;
+        LOG.info("receive() [After kafkaConsumer.poll] completed in {} ms", (System.currentTimeMillis() - stepStart));
+        stepStart = System.currentTimeMillis();
 
         if (records != null) {
-            LOG.info("ObjectPropagate -> Found kafkaRecords : {}", records.count());
+            LOG.info("receive() => Found kafkaRecords: {} in {} ms", records.count(), (System.currentTimeMillis() - stepStart));
+            stepStart = System.currentTimeMillis();
+
             for (ConsumerRecord<?, ?> record : records) {
-//                if (LOG.isDebugEnabled()) {
-                    LOG.info("ObjectPropagate -> Received Message topic ={}, partition ={}, offset = {}, key = {}, value = {}",
-                            record.topic(), record.partition(), record.offset(), record.key(), record.value());
-//                }
+                LOG.info("receive() => Received Message topic={}, partition={}, offset={}, key={}, value={} in {} ms",
+                        record.topic(), record.partition(), record.offset(), record.key(), record.value(),
+                        (System.currentTimeMillis() - stepStart));
+                stepStart = System.currentTimeMillis();
 
                 TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
                 if (MapUtils.isNotEmpty(lastCommittedPartitionOffset)
@@ -117,32 +126,44 @@ public class AtlasKafkaConsumer<T> extends AbstractNotificationConsumer<T> {
                         && record.offset() < lastCommittedPartitionOffset.get(topicPartition)) {
 
                     commit(topicPartition, record.offset());
-                    LOG.info("ObjectPropagate -> Skipping already processed message: topic={}, partition={} offset={}. Last processed offset={}",
-                                record.topic(), record.partition(), record.offset(), lastCommittedPartitionOffset.get(topicPartition));
+                    LOG.info("receive() => Skipping already processed message: topic={}, partition={}, offset={}. Last processed offset={} in {} ms",
+                            record.topic(), record.partition(), record.offset(), lastCommittedPartitionOffset.get(topicPartition),
+                            (System.currentTimeMillis() - stepStart));
+                    stepStart = System.currentTimeMillis();
                     continue;
                 }
 
                 T message = null;
-
                 try {
-                    LOG.info("ObjectPropagate -> Message converting to kafkaMessage");
+                    LOG.info("receive() => Converting message to kafkaMessage in {} ms", (System.currentTimeMillis() - stepStart));
+                    stepStart = System.currentTimeMillis();
+
                     message = deserializer.deserialize(record.value().toString());
-                    LOG.info("ObjectPropagate -> Message converted to kafkaMessage : {}", message.toString());
+                    LOG.info("receive() => Message converted to kafkaMessage: {} in {} ms",
+                            message.toString(), (System.currentTimeMillis() - stepStart));
+                    stepStart = System.currentTimeMillis();
                 } catch (OutOfMemoryError excp) {
-                    LOG.error("Ignoring message that failed to deserialize: topic={}, partition={}, offset={}, key={}, value={}",
-                            record.topic(), record.partition(), record.offset(), record.key(), record.value(), excp);
+                    LOG.error("receive() => Ignoring message that failed to deserialize: topic={}, partition={}, offset={}, key={}, value={} in {} ms",
+                            record.topic(), record.partition(), record.offset(), record.key(), record.value(),
+                            (System.currentTimeMillis() - stepStart), excp);
                 }
 
                 if (message == null) {
                     continue;
                 }
-                LOG.info("ObjectPropagate -> Message added to kafkaMessage batch");
+                LOG.info("receive() => Adding message to batch in {} ms", (System.currentTimeMillis() - stepStart));
+                stepStart = System.currentTimeMillis();
+
                 messages.add(new AtlasKafkaMessage(message, record.offset(), record.topic(), record.partition(),
-                                                            deserializer.getMsgCreated(), deserializer.getSpooled()));
+                        deserializer.getMsgCreated(), deserializer.getSpooled()));
+                LOG.info("receive() => Batch size now: {} after {} ms", messages.size(), (System.currentTimeMillis() - stepStart));
+                stepStart = System.currentTimeMillis();
             }
         }
 
+        long totalTime = System.currentTimeMillis() - methodStart;
+        LOG.info("receive() => End of method, total execution time: {} ms", totalTime);
         return messages;
-
     }
+
 }
