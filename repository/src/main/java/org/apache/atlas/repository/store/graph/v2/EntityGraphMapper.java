@@ -3539,59 +3539,93 @@ public class EntityGraphMapper {
 
     // TODO : HR : Changing method to cater to ony single propagation attachment. Dev->DONE Testing->PENDING
     public void processClassificationPropagationAddition(String entityGuid, String classificationVertexId) throws AtlasBaseException {
-        LOG.info("ObjectPropagate ==> processClassificationPropagationAddition(entityGuid={}, classificationVertexId={})", entityGuid, classificationVertexId);
+        LOG.info("ObjectPropagate ==> processClassificationPropagationAddition(entityGuid={}, classificationVertexId={})",
+                entityGuid, classificationVertexId);
 
-        AtlasPerfMetrics.MetricRecorder classificationPropagationMetricRecorder = RequestContext.get().startMetricRecord("processClassificationPropagationAddition");
+        long lineStart = System.currentTimeMillis(); // track time for each line
+
+        AtlasPerfMetrics.MetricRecorder classificationPropagationMetricRecorder =
+                RequestContext.get().startMetricRecord("processClassificationPropagationAddition");
+        LOG.info("[Line 1] startMetricRecord() completed in {} ms", (System.currentTimeMillis() - lineStart));
+        lineStart = System.currentTimeMillis();
+
         AtlasVertex classificationVertex = graph.getVertex(classificationVertexId);
+        LOG.info("[Line 2] getVertex() completed in {} ms", (System.currentTimeMillis() - lineStart));
+        lineStart = System.currentTimeMillis();
+
         LOG.info("ObjectPropagate Retrieved classification vertex for ID: {}", classificationVertexId);
+        LOG.info("[Line 3] LOG.info() completed in {} ms", (System.currentTimeMillis() - lineStart));
+        lineStart = System.currentTimeMillis();
 
         AtlasVertex vertexToPropagate = null;
 
         try {
             vertexToPropagate = graphHelper.getVertexForGUID(entityGuid);
+            LOG.info("[Line 4] getVertexForGUID() completed in {} ms", (System.currentTimeMillis() - lineStart));
             LOG.info("ObjectPropagate Retrieved vertex to propagate for entity GUID: {}", entityGuid);
         } catch (EntityNotFoundException e) {
+            LOG.info("[Line 4] getVertexForGUID() (exception) in {} ms", (System.currentTimeMillis() - lineStart));
             LOG.error("ObjectPropagate Vertex not found for GUID: {}", entityGuid, e);
             throw new AtlasBaseException(AtlasErrorCode.INSTANCE_GUID_NOT_FOUND);
         }
+        lineStart = System.currentTimeMillis();
 
         try {
-            AtlasPerfMetrics.MetricRecorder metricRecorder = RequestContext.get().startMetricRecord("lockObjectsAfterTraverse");
-            String vertexGuid = GraphHelper.getGuid(vertexToPropagate);
-
-            LOG.info("ObjectPropagate Locking object and releasing post commit for vertexGuid={}", vertexGuid);
-            GraphTransactionInterceptor.lockObjectAndReleasePostCommit(vertexGuid);
-            RequestContext.get().endMetricRecord(metricRecorder);
-
+            // [Line 5a] Convert classification vertex to AtlasClassification
             AtlasClassification classification = entityRetriever.toAtlasClassification(classificationVertex);
+            LOG.info("[Line 5a] toAtlasClassification() completed in {} ms", (System.currentTimeMillis() - lineStart));
             LOG.info("ObjectPropagate Converted classification vertex to AtlasClassification: {}", classification.getTypeName());
+            lineStart = System.currentTimeMillis();
 
-            AtlasVertex entityPropagatedTo = deleteDelegate.getHandler().addTagPropagation(classificationVertex, vertexToPropagate);
+            AtlasVertex entityPropagatedTo = deleteDelegate.getHandler()
+                    .addTagPropagation(classificationVertex, vertexToPropagate);
+            LOG.info("[Line 5b] addTagPropagation() completed in {} ms", (System.currentTimeMillis() - lineStart));
             LOG.info("ObjectPropagate Result of addTagPropagation -> entityPropagatedTo: {}",
                     (entityPropagatedTo != null ? entityPropagatedTo.getIdForDisplay() : "null"));
+            lineStart = System.currentTimeMillis();
 
             if (Objects.isNull(entityPropagatedTo)) {
-                LOG.info("ObjectPropagate No entity found to propagate classification. Exiting.");
+                LOG.info("[Line 5c] No entity found to propagate classification. Exiting after {} ms",
+                        (System.currentTimeMillis() - lineStart));
                 return;
             }
+            LOG.info("[Line 5c] Check entityPropagatedTo != null in {} ms", (System.currentTimeMillis() - lineStart));
+            lineStart = System.currentTimeMillis();
 
             AtlasEntity propagatedEntity = updateClassificationText(entityPropagatedTo);
-            LOG.info("ObjectPropagate Updated classification text on entity with GUID: {}", GraphHelper.getGuid(entityPropagatedTo));
+            LOG.info("[Line 5d] updateClassificationText() completed in {} ms", (System.currentTimeMillis() - lineStart));
+            LOG.info("ObjectPropagate Updated classification text on entity with GUID: {}",
+                    GraphHelper.getGuid(entityPropagatedTo));
+            lineStart = System.currentTimeMillis();
 
-            entityChangeNotifier.onClassificationsAddedToEntities(Collections.singletonList(propagatedEntity),
+            entityChangeNotifier.onClassificationsAddedToEntities(
+                    Collections.singletonList(propagatedEntity),
                     Collections.singletonList(classification),
-                    false);
+                    false
+            );
+            LOG.info("[Line 5e] onClassificationsAddedToEntities() completed in {} ms",
+                    (System.currentTimeMillis() - lineStart));
             LOG.info("ObjectPropagate Notified classification addition to entity.");
+            lineStart = System.currentTimeMillis();
 
             transactionInterceptHelper.intercept();
+            LOG.info("[Line 5f] transactionInterceptHelper.intercept() completed in {} ms",
+                    (System.currentTimeMillis() - lineStart));
             LOG.info("ObjectPropagate transactionInterceptHelper.intercept() executed.");
+            lineStart = System.currentTimeMillis();
+
         } catch (AtlasBaseException exception) {
+            LOG.info("[Line 6] Catch block triggered after {} ms", (System.currentTimeMillis() - lineStart));
             LOG.error("ObjectPropagate Error occurred while adding classification propagation for classification with propagation id {}",
                     classificationVertex.getIdForDisplay(), exception);
             throw exception;
         } finally {
             RequestContext.get().endMetricRecord(classificationPropagationMetricRecorder);
-            LOG.info("ObjectPropagate <== processClassificationPropagationAddition(entityGuid={}, classificationVertexId={})", entityGuid, classificationVertexId);
+            LOG.info("[Line 7] endMetricRecord() completed in {} ms", (System.currentTimeMillis() - lineStart));
+            lineStart = System.currentTimeMillis();
+
+            LOG.info("ObjectPropagate <== processClassificationPropagationAddition(entityGuid={}, classificationVertexId={}) after {} ms",
+                    entityGuid, classificationVertexId, (System.currentTimeMillis() - lineStart));
         }
     }
 
