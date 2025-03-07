@@ -418,7 +418,7 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
 
                         // [Line 8] Update redis counters
                         if (subTaskSuccess > 0) {
-                            redisService.incrValue(ASSETS_COUNT_PROPAGATED, subTaskSuccess);
+//                            redisService.incrValue(ASSETS_COUNT_PROPAGATED, subTaskSuccess);
                             subTaskSuccess = 0;
                             LOG.info("ObjectPropConsumer::doWork() [Line 8] => incremented ASSETS_COUNT_PROPAGATED in {} ms",
                                     (System.currentTimeMillis() - lineStart));
@@ -426,7 +426,7 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
                         lineStart = System.currentTimeMillis();
 
                         if (subTaskFail > 0) {
-                            redisService.incrValue(ASSETS_PROPAGATION_FAILED_COUNT, subTaskFail);
+//                            redisService.incrValue(ASSETS_PROPAGATION_FAILED_COUNT, subTaskFail);
                             subTaskFail = 0;
                             LOG.info("ObjectPropConsumer::doWork() [Line 9] => incremented ASSETS_PROPAGATION_FAILED_COUNT in {} ms",
                                     (System.currentTimeMillis() - lineStart));
