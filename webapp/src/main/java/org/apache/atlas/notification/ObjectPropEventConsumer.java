@@ -343,6 +343,7 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
 
         @Override
         public void doWork() {
+            // INC kafka batch size -> reduce kafka calls
             long lineStart = System.currentTimeMillis();
 
             LOG.info("ObjectPropConsumer::doWork() [Line 1] ==> Entered doWork()");
@@ -387,7 +388,7 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
                         lineStart = System.currentTimeMillis();
 
                         for (AtlasKafkaMessage<ObjectPropEvent> msg : messages) {
-                            long msgStart = System.currentTimeMillis(); // track each message individually
+                            long msgStart = System.currentTimeMillis();
 
                             LOG.info("ObjectPropConsumer::doWork() -> Msg consumed on offset : {} with value : {}",
                                     msg.getOffset(), msg.toString());
@@ -401,7 +402,7 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
                             msgStart = System.currentTimeMillis();
 
                             if (res) {
-                                long commitOffset = msg.getOffset() + 1;
+                                long commitOffset = msg.getOffset() + 1; // Reduce this to a single batch commit
                                 consumer.commit(msg.getTopicPartition(), commitOffset);
                                 subTaskSuccess++;
                                 LOG.info("ObjectPropConsumer::doWork() [Line 7-c] => commit offset done in {} ms",
@@ -431,6 +432,7 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
                             LOG.info("ObjectPropConsumer::doWork() [Line 9] => incremented ASSETS_PROPAGATION_FAILED_COUNT in {} ms",
                                     (System.currentTimeMillis() - lineStart));
                         }
+                        // move redis above than kafka
                         lineStart = System.currentTimeMillis();
 
                     } catch (IllegalStateException ex) {
