@@ -326,7 +326,7 @@ public class KafkaNotification extends AbstractNotification implements Service {
 
         Properties consumerProperties = new Properties();
         consumerProperties.putAll(properties);
-        consumerProperties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "10");
+        consumerProperties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "20");
         consumerProperties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
 
         return consumerProperties;

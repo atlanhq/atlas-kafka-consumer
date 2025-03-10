@@ -344,105 +344,88 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
         @Override
         public void doWork() {
             // INC kafka batch size -> reduce kafka calls
-            long lineStart = System.currentTimeMillis();
-
+            long startTime = System.currentTimeMillis();
             LOG.info("ObjectPropConsumer::doWork() [Line 1] ==> Entered doWork()");
-            LOG.info("ObjectPropConsumer::doWork() [Line 1] completed in {} ms", (System.currentTimeMillis() - lineStart));
-            lineStart = System.currentTimeMillis();
 
             shouldRun.set(true);
             LOG.info("ObjectPropConsumer::doWork() [Line 2] => shouldRun.set(true) completed in {} ms",
-                    (System.currentTimeMillis() - lineStart));
-            lineStart = System.currentTimeMillis();
+                    (System.currentTimeMillis() - startTime));
 
             if (!serverAvailable(new ObjectPropEventConsumer.Timer())) {
                 LOG.info("ObjectPropConsumer::doWork() [Line 3] => serverAvailable() was false. Exiting doWork() in {} ms",
-                        (System.currentTimeMillis() - lineStart));
+                        (System.currentTimeMillis() - startTime));
                 return;
             }
             LOG.info("ObjectPropConsumer::doWork() [Line 3] => serverAvailable() was true in {} ms",
-                    (System.currentTimeMillis() - lineStart));
-            lineStart = System.currentTimeMillis();
+                    (System.currentTimeMillis() - startTime));
 
             try {
                 while (shouldRun.get()) {
-                    LOG.info("ObjectPropConsumer::doWork() [Line 4] => top of while loop in {} ms",
-                            (System.currentTimeMillis() - lineStart));
-                    lineStart = System.currentTimeMillis();
-
-                    LOG.info("ObjectPropConsumer::doWork() -> Running the consumer poller");
-                    LOG.info("ObjectPropConsumer::doWork() [Line 5] => starting receiveWithCheckedCommit() in {} ms",
-                            (System.currentTimeMillis() - lineStart));
-                    lineStart = System.currentTimeMillis();
+                    long loopStart = System.currentTimeMillis();
+                    LOG.info("ObjectPropConsumer::doWork() [Line 4] => Top of while loop in {} ms",
+                            (loopStart - startTime));
 
                     try {
+                        long receiveStart = System.currentTimeMillis();
+                        LOG.info("ObjectPropConsumer::doWork() [Line 5] => Starting receiveWithCheckedCommit()");
+
                         List<AtlasKafkaMessage<ObjectPropEvent>> messages =
                                 consumer.receiveWithCheckedCommit(lastCommittedPartitionOffset);
                         LOG.info("ObjectPropConsumer::doWork() [Line 5] => receiveWithCheckedCommit() completed in {} ms",
-                                (System.currentTimeMillis() - lineStart));
-                        lineStart = System.currentTimeMillis();
+                                (System.currentTimeMillis() - receiveStart));
 
-                        LOG.info("ObjectPropConsumer::doWork() -> Messages recvd : {}", messages.size());
-                        LOG.info("ObjectPropConsumer::doWork() [Line 6] => logged messages.size() in {} ms",
-                                (System.currentTimeMillis() - lineStart));
-                        lineStart = System.currentTimeMillis();
+                        LOG.info("ObjectPropConsumer::doWork() -> Messages received: {}", messages.size());
 
+                        long msgStart;
+                        AtlasKafkaMessage<ObjectPropEvent> last_msg = null;
                         for (AtlasKafkaMessage<ObjectPropEvent> msg : messages) {
-                            long msgStart = System.currentTimeMillis();
-
-                            LOG.info("ObjectPropConsumer::doWork() -> Msg consumed on offset : {} with value : {}",
-                                    msg.getOffset(), msg.toString());
-                            LOG.info("ObjectPropConsumer::doWork() [Line 7-a] => Logged msg info in {} ms",
-                                    (System.currentTimeMillis() - msgStart));
                             msgStart = System.currentTimeMillis();
+                            LOG.info("ObjectPropConsumer::doWork() -> Msg consumed on offset: {} with value: {}",
+                                    msg.getOffset(), msg.toString());
 
                             boolean res = atlasEntityStore.processTasks(msg.getMessage());
                             LOG.info("ObjectPropConsumer::doWork() [Line 7-b] => processTasks() completed in {} ms",
                                     (System.currentTimeMillis() - msgStart));
-                            msgStart = System.currentTimeMillis();
 
                             if (res) {
-                                long commitOffset = msg.getOffset() + 1; // Reduce this to a single batch commit
-                                consumer.commit(msg.getTopicPartition(), commitOffset);
                                 subTaskSuccess++;
-                                LOG.info("ObjectPropConsumer::doWork() [Line 7-c] => commit offset done in {} ms",
-                                        (System.currentTimeMillis() - msgStart));
-                                LOG.info("ObjectPropConsumer::doWork() -> Message processed successfully");
                             } else {
-                                // [Line 7-d] Mark failure
                                 subTaskFail++;
-                                LOG.info("ObjectPropConsumer::doWork() [Line 7-d] => subTaskFail incremented in {} ms",
-                                        (System.currentTimeMillis() - msgStart));
                                 LOG.info("ObjectPropConsumer::doWork() -> Message processing failed");
                             }
+                            last_msg = msg;
                         }
 
-                        // [Line 8] Update redis counters
+                        // [Line 8 & 9] Update Redis counters **before** committing Kafka offsets
                         if (subTaskSuccess > 0) {
-//                            redisService.incrValue(ASSETS_COUNT_PROPAGATED, subTaskSuccess);
+                            // redisService.incrValue(ASSETS_COUNT_PROPAGATED, subTaskSuccess);
                             subTaskSuccess = 0;
-                            LOG.info("ObjectPropConsumer::doWork() [Line 8] => incremented ASSETS_COUNT_PROPAGATED in {} ms",
-                                    (System.currentTimeMillis() - lineStart));
+                            LOG.info("ObjectPropConsumer::doWork() [Line 8] => incremented ASSETS_COUNT_PROPAGATED");
                         }
-                        lineStart = System.currentTimeMillis();
 
                         if (subTaskFail > 0) {
-//                            redisService.incrValue(ASSETS_PROPAGATION_FAILED_COUNT, subTaskFail);
+                            // redisService.incrValue(ASSETS_PROPAGATION_FAILED_COUNT, subTaskFail);
                             subTaskFail = 0;
-                            LOG.info("ObjectPropConsumer::doWork() [Line 9] => incremented ASSETS_PROPAGATION_FAILED_COUNT in {} ms",
-                                    (System.currentTimeMillis() - lineStart));
+                            LOG.info("ObjectPropConsumer::doWork() [Line 9] => incremented ASSETS_PROPAGATION_FAILED_COUNT");
                         }
-                        // move redis above than kafka
-                        lineStart = System.currentTimeMillis();
+
+                        // [Line 7-c] Commit Kafka offset **after** Redis updates
+                        if (last_msg != null) {
+                            long commitStart = System.currentTimeMillis();
+                            long commitOffset = last_msg.getOffset() + 1;
+                            consumer.commit(last_msg.getTopicPartition(), commitOffset);
+                            LOG.info("ObjectPropConsumer::doWork() [Line 7-c] => commit offset done in {} ms",
+                                    (System.currentTimeMillis() - commitStart));
+                        }
+
+                        LOG.info("ObjectPropConsumer::doWork() -> Message processed successfully");
 
                     } catch (IllegalStateException ex) {
-                        LOG.info("ObjectPropConsumer::doWork() [Line 10] => caught IllegalStateException in {} ms",
-                                (System.currentTimeMillis() - lineStart));
+                        LOG.info("ObjectPropConsumer::doWork() [Line 10] => caught IllegalStateException");
                         adaptiveWaiter.pause(ex);
                         LOG.info("ObjectPropConsumer::doWork() -> adaptiveWaiter.pause(ex) done.");
                     } catch (Exception e) {
-                        LOG.info("ObjectPropConsumer::doWork() [Line 11] => caught generic Exception in {} ms",
-                                (System.currentTimeMillis() - lineStart));
+                        LOG.info("ObjectPropConsumer::doWork() [Line 11] => caught generic Exception");
 
                         if (shouldRun.get()) {
                             LOG.warn("ObjectPropConsumer::doWork() -> Exception in ObjectPropEventConsumer", e);
@@ -453,20 +436,20 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
                             break;
                         }
                     }
-
-                    lineStart = System.currentTimeMillis();
                 }
             } finally {
                 // [Line 12] Close consumer
+                long closeStart = System.currentTimeMillis();
                 if (consumer != null) {
-                    LOG.info("ObjectPropConsumer::doWork() [Line 12] => closing NotificationConsumer in {} ms",
-                            (System.currentTimeMillis() - lineStart));
+                    LOG.info("ObjectPropConsumer::doWork() [Line 12] => closing NotificationConsumer");
                     consumer.close();
-                    LOG.info("ObjectPropConsumer::doWork() -> consumer closed.");
+                    LOG.info("ObjectPropConsumer::doWork() -> consumer closed in {} ms",
+                            (System.currentTimeMillis() - closeStart));
                 }
 
                 long endTime = System.currentTimeMillis();
-                LOG.info("ObjectPropConsumer::doWork() [Line 13] <== Exiting doWork() after {} ms", (endTime - lineStart));
+                LOG.info("ObjectPropConsumer::doWork() [Line 13] <== Exiting doWork() after {} ms",
+                        (endTime - startTime));
             }
         }
 
