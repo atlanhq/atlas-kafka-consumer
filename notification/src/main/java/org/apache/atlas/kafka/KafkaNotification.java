@@ -117,7 +117,7 @@ public class KafkaNotification extends AbstractNotification implements Service {
         Configuration kafkaConf = ApplicationProperties.getSubsetConfiguration(applicationProperties, PROPERTY_PREFIX);
 
         properties             = ConfigurationConverter.getProperties(kafkaConf);
-        pollTimeOutMs          = 200L;
+        pollTimeOutMs          = 100L;
         consumerClosedErrorMsg = kafkaConf.getString("error.message.consumer_closed", DEFAULT_CONSUMER_CLOSED_ERROR_MESSAGE);
 
         //Override default configs
@@ -156,7 +156,7 @@ public class KafkaNotification extends AbstractNotification implements Service {
         LOG.info("==> KafkaNotification()");
 
         this.properties    = properties;
-        this.pollTimeOutMs = 200L;
+        this.pollTimeOutMs = 100L;
 
         LOG.info("<== KafkaNotification()");
     }
@@ -326,7 +326,7 @@ public class KafkaNotification extends AbstractNotification implements Service {
 
         Properties consumerProperties = new Properties();
         consumerProperties.putAll(properties);
-        consumerProperties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "20");
+        consumerProperties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "100");
         consumerProperties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
 
         return consumerProperties;

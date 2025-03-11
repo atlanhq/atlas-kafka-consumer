@@ -11,6 +11,7 @@ import org.apache.atlas.model.notification.ObjectPropEvent;
 import org.apache.atlas.repository.converters.AtlasInstanceConverter;
 import org.apache.atlas.repository.store.graph.AtlasEntityStore;
 import org.apache.atlas.repository.store.graph.EntityCorrelationStore;
+import org.apache.atlas.repository.store.graph.v2.TransactionInterceptHelper;
 import org.apache.atlas.service.Service;
 import org.apache.atlas.service.redis.RedisService;
 import org.apache.atlas.type.AtlasTypeRegistry;
@@ -96,20 +97,23 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
     @VisibleForTesting
     List<ObjectPropConsumer> consumers;
 
+    private TransactionInterceptHelper   transactionInterceptHelper;
     @Inject
     public ObjectPropEventConsumer(NotificationInterface notificationInterface, AtlasEntityStore atlasEntityStore,
                                    ServiceState serviceState, AtlasInstanceConverter instanceConverter,
                                    AtlasTypeRegistry typeRegistry, AtlasMetricsUtil metricsUtil,
-                                   EntityCorrelationStore entityCorrelationStore, RedisService redisService) throws AtlasException {
+                                   EntityCorrelationStore entityCorrelationStore, RedisService redisService, TransactionInterceptHelper transactionInterceptHelper) throws AtlasException {
         this.notificationInterface = notificationInterface;
         this.atlasEntityStore      = atlasEntityStore;
         this.serviceState          = serviceState;
         this.instanceConverter     = instanceConverter;
         this.typeRegistry          = typeRegistry;
         this.redisService = redisService;
+        this.transactionInterceptHelper = transactionInterceptHelper;
         this.applicationProperties = ApplicationProperties.get();
         this.metricsUtil                    = metricsUtil;
         this.lastCommittedPartitionOffset   = new HashMap<>();
+        this.transactionInterceptHelper = transactionInterceptHelper;
 
         maxRetries            = applicationProperties.getInt(CONSUMER_RETRIES_PROPERTY, 3);
         failedMsgCacheSize    = applicationProperties.getInt(CONSUMER_FAILEDCACHESIZE_PROPERTY, 1);
@@ -166,7 +170,7 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
         executors = executorService;
 
         for (final NotificationConsumer<ObjectPropEvent> consumer : notificationConsumers) {
-            ObjectPropConsumer objectPropConsumer = new ObjectPropConsumer(consumer);
+            ObjectPropConsumer objectPropConsumer = new ObjectPropConsumer(consumer, transactionInterceptHelper);
 
             consumers.add(objectPropConsumer);
             executors.submit(objectPropConsumer);
@@ -333,11 +337,12 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
         private final NotificationConsumer<ObjectPropEvent> consumer;
         private final AtomicBoolean shouldRun      = new AtomicBoolean(false);
         private final List<String>                           failedMessages = new ArrayList<>();
+        private final TransactionInterceptHelper transactionInterceptHelper;
         private final ObjectPropEventConsumer.AdaptiveWaiter adaptiveWaiter = new ObjectPropEventConsumer.AdaptiveWaiter(minWaitDuration, maxWaitDuration, minWaitDuration);
 
-        public ObjectPropConsumer(NotificationConsumer<ObjectPropEvent> consumer) {
+        public ObjectPropConsumer(NotificationConsumer<ObjectPropEvent> consumer, TransactionInterceptHelper transactionInterceptHelper) {
             super("atlas-object_prop-consumer-thread", false);
-
+            this.transactionInterceptHelper = transactionInterceptHelper;
             this.consumer = consumer;
         }
 
@@ -361,6 +366,7 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
 
             try {
                 while (shouldRun.get()) {
+                    long whileStart = 0;
                     long loopStart = System.currentTimeMillis();
                     LOG.info("ObjectPropConsumer::doWork() [Line 4] => Top of while loop in {} ms",
                             (loopStart - startTime));
@@ -380,34 +386,38 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
                         AtlasKafkaMessage<ObjectPropEvent> last_msg = null;
                         for (AtlasKafkaMessage<ObjectPropEvent> msg : messages) {
                             msgStart = System.currentTimeMillis();
-                            LOG.info("ObjectPropConsumer::doWork() -> Msg consumed on offset: {} with value: {}",
-                                    msg.getOffset(), msg.toString());
-
-                            boolean res = atlasEntityStore.processTasks(msg.getMessage());
+//                            boolean res = atlasEntityStore.processTasks(msg.getMessage());
+                            atlasEntityStore.processTasks(msg.getMessage());
                             LOG.info("ObjectPropConsumer::doWork() [Line 7-b] => processTasks() completed in {} ms",
                                     (System.currentTimeMillis() - msgStart));
 
-                            if (res) {
-                                subTaskSuccess++;
-                            } else {
-                                subTaskFail++;
-                                LOG.info("ObjectPropConsumer::doWork() -> Message processing failed");
-                            }
+//                            if (res) {
+//                                subTaskSuccess++;
+//                            } else {
+//                                subTaskFail++;
+//                                LOG.info("ObjectPropConsumer::doWork() -> Message processing failed");
+//                            }
                             last_msg = msg;
                         }
 
-                        // [Line 8 & 9] Update Redis counters **before** committing Kafka offsets
-                        if (subTaskSuccess > 0) {
-                            // redisService.incrValue(ASSETS_COUNT_PROPAGATED, subTaskSuccess);
-                            subTaskSuccess = 0;
-                            LOG.info("ObjectPropConsumer::doWork() [Line 8] => incremented ASSETS_COUNT_PROPAGATED");
-                        }
+                        long lineStart = System.currentTimeMillis();
+                        transactionInterceptHelper.intercept();
+                        LOG.info("ObjectPropConsumer::doWork() -> transactionInterceptHelper.intercept() completed in {} ms",
+                                (System.currentTimeMillis() - lineStart));
+                        LOG.info("ObjectPropConsumer::doWork() -> transactionInterceptHelper.intercept() executed.");
 
-                        if (subTaskFail > 0) {
-                            // redisService.incrValue(ASSETS_PROPAGATION_FAILED_COUNT, subTaskFail);
-                            subTaskFail = 0;
-                            LOG.info("ObjectPropConsumer::doWork() [Line 9] => incremented ASSETS_PROPAGATION_FAILED_COUNT");
-                        }
+                        // [Line 8 & 9] Update Redis counters **before** committing Kafka offsets
+//                        if (subTaskSuccess > 0) {
+//                            // redisService.incrValue(ASSETS_COUNT_PROPAGATED, subTaskSuccess);
+//                            subTaskSuccess = 0;
+//                            LOG.info("ObjectPropConsumer::doWork() [Line 8] => incremented ASSETS_COUNT_PROPAGATED");
+//                        }
+//
+//                        if (subTaskFail > 0) {
+//                            // redisService.incrValue(ASSETS_PROPAGATION_FAILED_COUNT, subTaskFail);
+//                            subTaskFail = 0;
+//                            LOG.info("ObjectPropConsumer::doWork() [Line 9] => incremented ASSETS_PROPAGATION_FAILED_COUNT");
+//                        }
 
                         // [Line 7-c] Commit Kafka offset **after** Redis updates
                         if (last_msg != null) {
@@ -420,11 +430,13 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
 
                         LOG.info("ObjectPropConsumer::doWork() -> Message processed successfully");
 
-                    } catch (IllegalStateException ex) {
+                    }
+                    catch (IllegalStateException ex) {
                         LOG.info("ObjectPropConsumer::doWork() [Line 10] => caught IllegalStateException");
                         adaptiveWaiter.pause(ex);
                         LOG.info("ObjectPropConsumer::doWork() -> adaptiveWaiter.pause(ex) done.");
-                    } catch (Exception e) {
+                    }
+                    catch (Exception e) {
                         LOG.info("ObjectPropConsumer::doWork() [Line 11] => caught generic Exception");
 
                         if (shouldRun.get()) {
@@ -435,6 +447,10 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
                             LOG.info("ObjectPropConsumer::doWork() -> shouldRun is false, breaking out of loop.");
                             break;
                         }
+                    }
+                    finally {
+                        LOG.info("ObjectPropConsumer::doWork() [Line 8] => whole whileLoop completed in {} ms",
+                                (System.currentTimeMillis() - whileStart));
                     }
                 }
             } finally {
