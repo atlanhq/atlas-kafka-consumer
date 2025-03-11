@@ -3845,28 +3845,61 @@ public class EntityGraphMapper {
     }
 
     AtlasEntity updateClassificationText(AtlasVertex propagatedVertex) throws AtlasBaseException {
-        AtlasPerfMetrics.MetricRecorder metricRecorder = RequestContext.get().startMetricRecord("updateClassificationText");
+        long lineStart = System.currentTimeMillis(); // track time from here
+
+        AtlasPerfMetrics.MetricRecorder metricRecorder =
+                RequestContext.get().startMetricRecord("updateClassificationText");
+        LOG.info("updateClassificationText => [Line 1] startMetricRecord() completed in {} ms", (System.currentTimeMillis() - lineStart));
+        lineStart = System.currentTimeMillis();
 
         AtlasEntity entity = null;
         for (int i = 1; i <= MAX_NUMBER_OF_RETRIES; i++) {
             try {
-                entity = instanceConverter.getAndCacheEntity(graphHelper.getGuid(propagatedVertex), ENTITY_CHANGE_NOTIFY_IGNORE_RELATIONSHIP_ATTRIBUTES);
-                break; //do not retry on success
+                entity = retrieverNoRelation.toAtlasEntity(propagatedVertex);
+                LOG.info("updateClassificationText => [Line 2] toAtlasEntity() completed in {} ms (iteration={})",
+                        (System.currentTimeMillis() - lineStart), i);
+                lineStart = System.currentTimeMillis();
+
+                break; // do not retry on success
             } catch (AtlasBaseException ex) {
+                LOG.info("updateClassificationText => [Line 2] toAtlasEntity() (exception) after {} ms (iteration={})",
+                        (System.currentTimeMillis() - lineStart), i);
+                lineStart = System.currentTimeMillis();
+
                 if (i == MAX_NUMBER_OF_RETRIES) {
-                    LOG.error(String.format("Maximum retries reached for fetching vertex with id %s from graph. Retried %s times. Skipping...", propagatedVertex.getId(), i));
+                    LOG.error("updateClassificationText => Maximum retries reached for fetching vertex with id {} from graph. Retried {} times. Skipping...",
+                            propagatedVertex.getId(), i);
                     continue;
                 }
-                LOG.warn(String.format("Vertex with id %s could not be fetched from graph. Retrying for %s time", propagatedVertex.getId(), i));
+
+                LOG.warn("updateClassificationText => Vertex with id {} could not be fetched from graph. Retrying for {} time",
+                        propagatedVertex.getId(), i);
             }
+
+            LOG.info("updateClassificationText => [Line 3] iteration loop end after {} ms (iteration={})",
+                    (System.currentTimeMillis() - lineStart), i);
+            lineStart = System.currentTimeMillis();
         }
 
         if (entity != null) {
             String classificationTextForEntity = fullTextMapperV2.getClassificationTextForEntity(entity);
+            LOG.info("updateClassificationText => [Line 4] getClassificationTextForEntity() completed in {} ms",
+                    (System.currentTimeMillis() - lineStart));
+            lineStart = System.currentTimeMillis();
+
             propagatedVertex.setProperty(CLASSIFICATION_TEXT_KEY, classificationTextForEntity);
+            LOG.info("updateClassificationText => [Line 5] setProperty() completed in {} ms",
+                    (System.currentTimeMillis() - lineStart));
+            lineStart = System.currentTimeMillis();
         }
 
         RequestContext.get().endMetricRecord(metricRecorder);
+        LOG.info("updateClassificationText => [Line 6] endMetricRecord() completed in {} ms",
+                (System.currentTimeMillis() - lineStart));
+        lineStart = System.currentTimeMillis();
+
+        LOG.info("updateClassificationText => <== after {} ms", (System.currentTimeMillis() - lineStart));
+
         return Objects.isNull(entity) ? new AtlasEntity() : entity;
     }
 
