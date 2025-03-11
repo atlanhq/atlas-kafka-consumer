@@ -3855,7 +3855,7 @@ public class EntityGraphMapper {
         AtlasEntity entity = null;
         for (int i = 1; i <= MAX_NUMBER_OF_RETRIES; i++) {
             try {
-                entity = retrieverNoRelation.toAtlasEntity(propagatedVertex);
+                entity = instanceConverter.getAndCacheEntity(graphHelper.getGuid(propagatedVertex), ENTITY_CHANGE_NOTIFY_IGNORE_RELATIONSHIP_ATTRIBUTES);
                 LOG.info("updateClassificationText => [Line 2] toAtlasEntity() completed in {} ms (iteration={})",
                         (System.currentTimeMillis() - lineStart), i);
                 lineStart = System.currentTimeMillis();
