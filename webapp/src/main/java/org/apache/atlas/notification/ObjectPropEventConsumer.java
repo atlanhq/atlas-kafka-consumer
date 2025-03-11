@@ -350,15 +350,10 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
         public void doWork() {
             // INC kafka batch size -> reduce kafka calls
             long startTime = System.currentTimeMillis();
-            LOG.info("ObjectPropConsumer::doWork() [Line 1] ==> Entered doWork()");
 
             shouldRun.set(true);
-            LOG.info("ObjectPropConsumer::doWork() [Line 2] => shouldRun.set(true) completed in {} ms",
-                    (System.currentTimeMillis() - startTime));
 
             if (!serverAvailable(new ObjectPropEventConsumer.Timer())) {
-                LOG.info("ObjectPropConsumer::doWork() [Line 3] => serverAvailable() was false. Exiting doWork() in {} ms",
-                        (System.currentTimeMillis() - startTime));
                 return;
             }
             LOG.info("ObjectPropConsumer::doWork() [Line 3] => serverAvailable() was true in {} ms",
@@ -366,15 +361,10 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
 
             try {
                 while (shouldRun.get()) {
-                    long whileStart = 0;
                     long loopStart = System.currentTimeMillis();
-                    LOG.info("ObjectPropConsumer::doWork() [Line 4] => Top of while loop in {} ms",
-                            (loopStart - startTime));
 
                     try {
                         long receiveStart = System.currentTimeMillis();
-                        LOG.info("ObjectPropConsumer::doWork() [Line 5] => Starting receiveWithCheckedCommit()");
-
                         List<AtlasKafkaMessage<ObjectPropEvent>> messages =
                                 consumer.receiveWithCheckedCommit(lastCommittedPartitionOffset);
                         LOG.info("ObjectPropConsumer::doWork() [Line 5] => receiveWithCheckedCommit() completed in {} ms",
@@ -401,11 +391,11 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
                         }
 
                         long lineStart = System.currentTimeMillis();
-                        transactionInterceptHelper.intercept();
-                        LOG.info("ObjectPropConsumer::doWork() -> transactionInterceptHelper.intercept() completed in {} ms",
-                                (System.currentTimeMillis() - lineStart));
-                        LOG.info("ObjectPropConsumer::doWork() -> transactionInterceptHelper.intercept() executed.");
-
+                        if(messages.size() > 0) {
+                            transactionInterceptHelper.intercept(); // only commit if msgSize is non 0
+                            LOG.info("ObjectPropConsumer::doWork() -> transactionInterceptHelper.intercept() completed in {} ms",
+                                    (System.currentTimeMillis() - lineStart));
+                        }
                         // [Line 8 & 9] Update Redis counters **before** committing Kafka offsets
 //                        if (subTaskSuccess > 0) {
 //                            // redisService.incrValue(ASSETS_COUNT_PROPAGATED, subTaskSuccess);
@@ -420,37 +410,35 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
 //                        }
 
                         // [Line 7-c] Commit Kafka offset **after** Redis updates
-                        if (last_msg != null) {
+                        if (messages.size() > 0) {
                             long commitStart = System.currentTimeMillis();
-                            long commitOffset = last_msg.getOffset() + 1;
+                            long commitOffset = messages.get(messages.size() - 1).getOffset() + 1;
                             consumer.commit(last_msg.getTopicPartition(), commitOffset);
                             LOG.info("ObjectPropConsumer::doWork() [Line 7-c] => commit offset done in {} ms",
                                     (System.currentTimeMillis() - commitStart));
                         }
 
-                        LOG.info("ObjectPropConsumer::doWork() -> Message processed successfully");
-
                     }
                     catch (IllegalStateException ex) {
-                        LOG.info("ObjectPropConsumer::doWork() [Line 10] => caught IllegalStateException");
+                        LOG.error("ERROR -> ObjectPropConsumer::doWork() [Line 10] => caught IllegalStateException");
                         adaptiveWaiter.pause(ex);
-                        LOG.info("ObjectPropConsumer::doWork() -> adaptiveWaiter.pause(ex) done.");
+                        LOG.error("ERROR -> ObjectPropConsumer::doWork() -> adaptiveWaiter.pause(ex) done.");
                     }
                     catch (Exception e) {
-                        LOG.info("ObjectPropConsumer::doWork() [Line 11] => caught generic Exception");
+                        LOG.error("ERROR -> ObjectPropConsumer::doWork() [Line 11] => caught generic Exception");
 
                         if (shouldRun.get()) {
-                            LOG.warn("ObjectPropConsumer::doWork() -> Exception in ObjectPropEventConsumer", e);
+                            LOG.error("ERROR -> ObjectPropConsumer::doWork() -> Exception in ObjectPropEventConsumer", e);
                             adaptiveWaiter.pause(e);
-                            LOG.info("ObjectPropConsumer::doWork() -> adaptiveWaiter.pause(e) done.");
+                            LOG.error("ERROR -> ObjectPropConsumer::doWork() -> adaptiveWaiter.pause(e) done.");
                         } else {
-                            LOG.info("ObjectPropConsumer::doWork() -> shouldRun is false, breaking out of loop.");
+                            LOG.error("ERROR -> ObjectPropConsumer::doWork() -> shouldRun is false, breaking out of loop.");
                             break;
                         }
                     }
                     finally {
                         LOG.info("ObjectPropConsumer::doWork() [Line 8] => whole whileLoop completed in {} ms",
-                                (System.currentTimeMillis() - whileStart));
+                                (System.currentTimeMillis() - loopStart));
                     }
                 }
             } finally {
