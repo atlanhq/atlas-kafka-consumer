@@ -21,6 +21,8 @@ import org.apache.atlas.notification.AbstractNotificationConsumer;
 import org.apache.atlas.notification.AtlasNotificationMessageDeserializer;
 import org.apache.atlas.notification.NotificationInterface;
 import org.apache.commons.collections.MapUtils;
+import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.common.errors.WakeupException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,11 +31,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 
 /**
  * Kafka specific notification consumer.
@@ -42,6 +40,7 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
  */
 public class AtlasKafkaConsumer<T> extends AbstractNotificationConsumer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(AtlasKafkaConsumer.class);
+    public static final int MAX_RETRIES = 6;
 
     private final KafkaConsumer kafkaConsumer;
     private final boolean       autoCommitEnabled;
@@ -78,9 +77,47 @@ public class AtlasKafkaConsumer<T> extends AbstractNotificationConsumer<T> {
     public void commit(TopicPartition partition, long offset) {
         if (!autoCommitEnabled) {
             if (LOG.isDebugEnabled()) {
-                LOG.info(" commiting the offset ==>> " + offset);
+                LOG.info("Committing the offset => " + offset);
             }
-            kafkaConsumer.commitSync(Collections.singletonMap(partition, new OffsetAndMetadata(offset)));
+
+            // Configure retry logic
+            final int maxRetries = MAX_RETRIES;
+            final long baseDelayMs = 500;
+            int attempt = 0;
+            boolean test = true;
+            while (true) {
+                attempt++;
+                try {
+                    // Attempt the commit
+                    kafkaConsumer.commitSync(Collections.singletonMap(partition, new OffsetAndMetadata(offset)));
+                    // If successful, break out of the loop
+                    if(test == true) {
+                        throw new CommitFailedException();
+                    }
+                    break;
+
+                } catch (CommitFailedException | WakeupException e) {
+
+                    if (attempt >= maxRetries) {
+                        throw e;
+                    }
+
+                    long backoffTime = baseDelayMs * (1L << (attempt - 1));
+                    if (LOG.isWarnEnabled()) {
+                        LOG.warn("Commit failed on attempt #" + attempt
+                                + ", will retry in " + backoffTime + " ms", e);
+                    }
+
+                    try {
+                        Thread.sleep(backoffTime);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException(
+                                "Interrupted during backoff before retrying commit", ie
+                        );
+                    }
+                }
+            }
         }
     }
 

@@ -338,9 +338,9 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
         private final ObjectPropEventConsumer.AdaptiveWaiter adaptiveWaiter = new ObjectPropEventConsumer.AdaptiveWaiter(minWaitDuration, maxWaitDuration, minWaitDuration);
         private String parentTaskGuid = "";
 
-        public final String SUCCESS_SUB_TASKS_KEY = "task:" + parentTaskGuid + ":success";
-        public final String FAILED_SUB_TASKS_KEY = "task:" + parentTaskGuid + ":failed";
-        public final String PARENT_TASK_MAP = "task:" + parentTaskGuid;
+        public String SUCCESS_SUB_TASKS_KEY = "task:%s:success";
+        public String FAILED_SUB_TASKS_KEY = "task:%s:failed";
+        public final String PARENT_TASK_MAP = "task:%s";
 
         public ObjectPropConsumer(NotificationConsumer<ObjectPropEvent> consumer, TransactionInterceptHelper transactionInterceptHelper) {
             super("atlas-object_prop-consumer-thread", false);
@@ -394,25 +394,25 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
 
                         long lineStart = System.currentTimeMillis();
                         if(messages.size() > 0) {
-                            transactionInterceptHelper.intercept(); // only commit if msgSize is non 0
+                            transactionInterceptHelper.intercept();
                             LOG.info("ObjectPropConsumer::doWork() -> transactionInterceptHelper.intercept() completed in {} ms",
                                     (System.currentTimeMillis() - lineStart));
                             this.parentTaskGuid = (String) messages.get(0).getMessage().getPayload().getOrDefault("parentTaskGuid","");
 
 
                             if (successfullSubtasks.size() > 0) {
-                                redisService.addToSet(SUCCESS_SUB_TASKS_KEY, successfullSubtasks);
+                                redisService.addToSet(String.format(SUCCESS_SUB_TASKS_KEY, parentTaskGuid), successfullSubtasks);
                                 successfullSubtasks.clear();
                                 LOG.info("ObjectPropConsumer::doWork() [Line 8] => incremented ASSETS_COUNT_PROPAGATED");
                             }
 
                             if (failedSubtasks.size() > 0) {
-                                redisService.addToSet(FAILED_SUB_TASKS_KEY, failedSubtasks);
+                                redisService.addToSet(String.format(FAILED_SUB_TASKS_KEY, parentTaskGuid), failedSubtasks);
                                 failedSubtasks.clear();
                                 LOG.info("ObjectPropConsumer::doWork() [Line 9] => incremented ASSETS_PROPAGATION_FAILED_COUNT");
                             }
 
-                            redisService.putInHash(PARENT_TASK_MAP, "lastModifiedAt", System.currentTimeMillis());
+                            redisService.putInHash(String.format(PARENT_TASK_MAP, parentTaskGuid), "lastModifiedAt", System.currentTimeMillis());
                             redisService.executeBatch();
                             long commitStart = System.currentTimeMillis();
                             long commitOffset = messages.get(messages.size() - 1).getOffset() + 1;

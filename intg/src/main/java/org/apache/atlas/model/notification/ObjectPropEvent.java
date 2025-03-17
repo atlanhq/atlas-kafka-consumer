@@ -26,15 +26,26 @@ public class ObjectPropEvent implements Serializable {
     HashMap<String, Object> payload;
 
     String traceId;
-    Date timestamp;
 
-    public ObjectPropEvent(PropagationOperationType operation, HashMap<String, Object> payload, String traceId, Date timestamp, String eventId) {
+    public String getParentTaskGuid() {
+        return parentTaskGuid;
+    }
+
+    public void setParentTaskGuid(String parentTaskGuid) {
+        this.parentTaskGuid = parentTaskGuid;
+    }
+
+    public ObjectPropEvent(PropagationOperationType operation, HashMap<String, Object> payload, String traceId, String parentTaskGuid, Date timestamp, String eventId) {
         this.operation = operation;
         this.payload = payload;
         this.traceId = traceId;
+        this.parentTaskGuid = parentTaskGuid;
         this.timestamp = timestamp;
         this.eventId = eventId;
     }
+
+    String parentTaskGuid;
+    Date timestamp;
 
     String eventId;
 
@@ -68,6 +79,7 @@ public class ObjectPropEvent implements Serializable {
                 "operation=" + operation +
                 ", payload=" + payload +
                 ", traceId='" + traceId + '\'' +
+                ", parentTaskGuid='" + parentTaskGuid + '\'' +
                 ", timestamp=" + timestamp +
                 ", eventId='" + eventId + '\'' +
                 '}';
