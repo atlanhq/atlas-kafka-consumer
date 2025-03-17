@@ -136,6 +136,7 @@ public class EntityGraphRetriever {
     public static final String QUALIFIED_NAME = "qualifiedName";
 
     private static final TypeReference<List<TimeBoundary>> TIME_BOUNDARIES_LIST_TYPE = new TypeReference<List<TimeBoundary>>() {};
+    public static final int TYPEDEF_CACHE_RETRY_INTERVAL = 1200;
     private final GraphHelper graphHelper;
 
     private final AtlasTypeRegistry typeRegistry;
@@ -145,15 +146,18 @@ public class EntityGraphRetriever {
 
     @Inject
     public EntityGraphRetriever(AtlasGraph graph, AtlasTypeRegistry typeRegistry) {
-        this(graph, typeRegistry, false);
+        this(graph, typeRegistry, null, false);
     }
 
     public EntityGraphRetriever(AtlasGraph graph, AtlasTypeRegistry typeRegistry, boolean ignoreRelationshipAttr) {
+        this(graph, typeRegistry, null, ignoreRelationshipAttr);
+    }
+
+    public EntityGraphRetriever(AtlasGraph graph, AtlasTypeRegistry typeRegistry, AtlasTypeDefGraphStoreV2 typeDefStore, boolean ignoreRelationshipAttr) {
         this.graph                  = graph;
         this.graphHelper            = new GraphHelper(graph);
         this.typeRegistry           = typeRegistry;
         this.ignoreRelationshipAttr = ignoreRelationshipAttr;
-
     }
 
     public AtlasEntity toAtlasEntity(String guid, boolean includeReferences) throws AtlasBaseException {
@@ -1382,11 +1386,17 @@ public class EntityGraphRetriever {
     private void mapAttributes(AtlasVertex entityVertex, AtlasStruct struct, AtlasEntityExtInfo entityExtInfo, boolean isMinExtInfo, boolean includeReferences) throws AtlasBaseException {
         AtlasPerfMetrics.MetricRecorder metricRecorder = RequestContext.get().startMetricRecord("mapAttributes");
         AtlasType objType = typeRegistry.getType(struct.getTypeName());
+        // only fetch the typeDef thats missing from graph itself
 //        int retryCount = 0;
-//        while(objType == null && retryCount < 3){
+//        while(objType == null && retryCount < 3 && typeDefStore != null){
 //            typeDefStore.init();
-//            retryCount++;
 //            objType = typeRegistry.getType(struct.getTypeName());
+//            retryCount++;
+//            try {
+//                Thread.sleep(TYPEDEF_CACHE_RETRY_INTERVAL);
+//            } catch (InterruptedException e) {
+//                LOG.info("Thread unable to sleep during typeDef cache retry");
+//            }
 //        }
 
         if (!(objType instanceof AtlasStructType)) {

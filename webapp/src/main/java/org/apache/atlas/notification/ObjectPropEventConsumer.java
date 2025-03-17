@@ -47,9 +47,6 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
     private static final Logger FAILED_LOG = LoggerFactory.getLogger("FAILED");
     private static final Logger LARGE_MESSAGES_LOG = LoggerFactory.getLogger("LARGE_MESSAGES");
 
-    public static long subTaskSuccess = 0;
-    public static long subTaskFail = 0;
-
     private static final int    SC_OK          = 200;
     private static final int    SC_BAD_REQUEST = 400;
 
@@ -339,6 +336,11 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
         private final List<String>                           failedMessages = new ArrayList<>();
         private final TransactionInterceptHelper transactionInterceptHelper;
         private final ObjectPropEventConsumer.AdaptiveWaiter adaptiveWaiter = new ObjectPropEventConsumer.AdaptiveWaiter(minWaitDuration, maxWaitDuration, minWaitDuration);
+        private String parentTaskGuid = "";
+
+        public final String SUCCESS_SUB_TASKS_KEY = "task:" + parentTaskGuid + ":success";
+        public final String FAILED_SUB_TASKS_KEY = "task:" + parentTaskGuid + ":failed";
+        public final String PARENT_TASK_MAP = "task:" + parentTaskGuid;
 
         public ObjectPropConsumer(NotificationConsumer<ObjectPropEvent> consumer, TransactionInterceptHelper transactionInterceptHelper) {
             super("atlas-object_prop-consumer-thread", false);
@@ -371,22 +373,22 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
                                 (System.currentTimeMillis() - receiveStart));
 
                         LOG.info("ObjectPropConsumer::doWork() -> Messages received: {}", messages.size());
-
+                        Set<String> successfullSubtasks = new HashSet<>();
+                        Set<String> failedSubtasks = new HashSet<>();
                         long msgStart;
                         AtlasKafkaMessage<ObjectPropEvent> last_msg = null;
                         for (AtlasKafkaMessage<ObjectPropEvent> msg : messages) {
                             msgStart = System.currentTimeMillis();
-//                            boolean res = atlasEntityStore.processTasks(msg.getMessage());
-                            atlasEntityStore.processTasks(msg.getMessage());
+                            boolean res = atlasEntityStore.processTasks(msg.getMessage());
                             LOG.info("ObjectPropConsumer::doWork() [Line 7-b] => processTasks() completed in {} ms",
                                     (System.currentTimeMillis() - msgStart));
 
-//                            if (res) {
-//                                subTaskSuccess++;
-//                            } else {
-//                                subTaskFail++;
-//                                LOG.info("ObjectPropConsumer::doWork() -> Message processing failed");
-//                            }
+                            if (res) {
+                                successfullSubtasks.add(msg.getMessage().getEventId());
+                            } else {
+                                LOG.info("ObjectPropConsumer::doWork() -> Message processing failed");
+                                failedSubtasks.add(msg.getMessage().getEventId());
+                            }
                             last_msg = msg;
                         }
 
@@ -395,22 +397,23 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
                             transactionInterceptHelper.intercept(); // only commit if msgSize is non 0
                             LOG.info("ObjectPropConsumer::doWork() -> transactionInterceptHelper.intercept() completed in {} ms",
                                     (System.currentTimeMillis() - lineStart));
-                        }
-                        // [Line 8 & 9] Update Redis counters **before** committing Kafka offsets
-//                        if (subTaskSuccess > 0) {
-//                            // redisService.incrValue(ASSETS_COUNT_PROPAGATED, subTaskSuccess);
-//                            subTaskSuccess = 0;
-//                            LOG.info("ObjectPropConsumer::doWork() [Line 8] => incremented ASSETS_COUNT_PROPAGATED");
-//                        }
-//
-//                        if (subTaskFail > 0) {
-//                            // redisService.incrValue(ASSETS_PROPAGATION_FAILED_COUNT, subTaskFail);
-//                            subTaskFail = 0;
-//                            LOG.info("ObjectPropConsumer::doWork() [Line 9] => incremented ASSETS_PROPAGATION_FAILED_COUNT");
-//                        }
+                            this.parentTaskGuid = (String) messages.get(0).getMessage().getPayload().getOrDefault("parentTaskGuid","");
 
-                        // [Line 7-c] Commit Kafka offset **after** Redis updates
-                        if (messages.size() > 0) {
+
+                            if (successfullSubtasks.size() > 0) {
+                                redisService.addToSet(SUCCESS_SUB_TASKS_KEY, successfullSubtasks);
+                                successfullSubtasks.clear();
+                                LOG.info("ObjectPropConsumer::doWork() [Line 8] => incremented ASSETS_COUNT_PROPAGATED");
+                            }
+
+                            if (failedSubtasks.size() > 0) {
+                                redisService.addToSet(FAILED_SUB_TASKS_KEY, failedSubtasks);
+                                failedSubtasks.clear();
+                                LOG.info("ObjectPropConsumer::doWork() [Line 9] => incremented ASSETS_PROPAGATION_FAILED_COUNT");
+                            }
+
+                            redisService.putInHash(PARENT_TASK_MAP, "lastModifiedAt", System.currentTimeMillis());
+                            redisService.executeBatch();
                             long commitStart = System.currentTimeMillis();
                             long commitOffset = messages.get(messages.size() - 1).getOffset() + 1;
                             consumer.commit(last_msg.getTopicPartition(), commitOffset);

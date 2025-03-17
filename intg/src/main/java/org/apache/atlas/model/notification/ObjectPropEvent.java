@@ -9,6 +9,7 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import java.io.Serializable;
+import java.util.Date;
 import java.util.HashMap;
 
 import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.NONE;
@@ -24,17 +25,52 @@ public class ObjectPropEvent implements Serializable {
     PropagationOperationType operation;
     HashMap<String, Object> payload;
 
+    String traceId;
+    Date timestamp;
+
+    public ObjectPropEvent(PropagationOperationType operation, HashMap<String, Object> payload, String traceId, Date timestamp, String eventId) {
+        this.operation = operation;
+        this.payload = payload;
+        this.traceId = traceId;
+        this.timestamp = timestamp;
+        this.eventId = eventId;
+    }
+
+    String eventId;
+
+    public String getTraceId() {
+        return traceId;
+    }
+
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
+    }
+
+    public Date getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(Date timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    public String getEventId() {
+        return eventId;
+    }
+
+    public void setEventId(String eventId) {
+        this.eventId = eventId;
+    }
+
     @Override
     public String toString() {
         return "ObjectPropEvent{" +
                 "operation=" + operation +
                 ", payload=" + payload +
+                ", traceId='" + traceId + '\'' +
+                ", timestamp=" + timestamp +
+                ", eventId='" + eventId + '\'' +
                 '}';
-    }
-
-    public ObjectPropEvent(PropagationOperationType operation, HashMap<String, Object> payload) {
-        this.operation = operation;
-        this.payload = payload;
     }
 
     public ObjectPropEvent() {
