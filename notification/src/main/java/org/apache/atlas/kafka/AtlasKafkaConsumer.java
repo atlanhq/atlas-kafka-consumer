@@ -84,7 +84,7 @@ public class AtlasKafkaConsumer<T> extends AbstractNotificationConsumer<T> {
             final int maxRetries = MAX_RETRIES;
             final long baseDelayMs = 500;
             int attempt = 0;
-            boolean test = true;
+            boolean test = false;
             while (true) {
                 attempt++;
                 try {

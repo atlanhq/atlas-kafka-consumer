@@ -31,6 +31,7 @@ public abstract class AbstractRedisService implements RedisService {
     private static final int DEFAULT_REDIS_WAIT_TIME_MS = 15_000;
     private static final int DEFAULT_REDIS_LOCK_WATCHDOG_TIMEOUT_MS = 600_000;
     private static final String ATLAS_METASTORE_SERVICE = "atlas-metastore-service";
+    public static final int MAX_RETRIES = 6;
 
     private final ThreadLocal<RBatch> threadLocalBatch = new ThreadLocal<>();
 
@@ -228,19 +229,47 @@ public abstract class AbstractRedisService implements RedisService {
 
     public void executeBatch() {
         RBatch batch = threadLocalBatch.get();
-        if (batch != null) {
-            try {
-                batch.execute();
-            } finally {
-                // remove the batch from ThreadLocal to avoid reuse or memory leaks
-                threadLocalBatch.remove();
-            }
-        } else {
-            // No batch was started on this thread
+        if (batch == null) {
             throw new IllegalStateException("No batch is active on this thread. " +
                     "Did you call beginBatch()?");
         }
+        boolean test = false;
+
+        final int maxRetries = MAX_RETRIES;
+        final long baseDelayMs = 500;
+        int attempt = 0;
+
+        while (true) {
+            attempt++;
+            try {
+                batch.execute();
+                if(test == true) {
+                    throw new Exception();
+                }
+                threadLocalBatch.remove();
+                return;
+
+            } catch (Exception e) {
+                if (attempt >= maxRetries) {
+                    threadLocalBatch.remove();
+                    throw new RuntimeException(
+                            String.format("Batch execution failed after %d attempts", attempt), e
+                    );
+                }
+                long backoffTime = baseDelayMs * (1L << (attempt - 1));
+
+                try {
+                    Thread.sleep(backoffTime);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    threadLocalBatch.remove();
+                    throw new RuntimeException(
+                            "Thread interrupted while sleeping for backoff", ie);
+                }
+            }
+        }
     }
+
 
     private String getHostAddress() throws UnknownHostException {
         return InetAddress.getLocalHost().getHostAddress();
