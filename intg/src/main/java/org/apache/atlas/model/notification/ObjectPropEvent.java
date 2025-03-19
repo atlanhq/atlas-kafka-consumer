@@ -44,7 +44,7 @@ public class ObjectPropEvent implements Serializable {
         this.eventId = eventId;
     }
 
-    String parentTaskGuid;
+    String parentTaskGuid = "";
     Date timestamp;
 
     String eventId;

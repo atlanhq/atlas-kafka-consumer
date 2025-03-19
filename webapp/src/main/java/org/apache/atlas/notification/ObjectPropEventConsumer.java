@@ -377,10 +377,11 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
                         Set<String> failedSubtasks = new HashSet<>();
                         long msgStart;
                         AtlasKafkaMessage<ObjectPropEvent> last_msg = null;
+                        long TPS = System.currentTimeMillis();
                         for (AtlasKafkaMessage<ObjectPropEvent> msg : messages) {
                             msgStart = System.currentTimeMillis();
                             boolean res = atlasEntityStore.processTasks(msg.getMessage());
-                            LOG.info("ObjectPropConsumer::doWork() [Line 7-b] => processTasks() completed in {} ms",
+                            LOG.info("ObjectPropConsumer::doWork() [BL] => processTasks() completed in {} ms",
                                     (System.currentTimeMillis() - msgStart));
 
                             if (res) {
@@ -391,13 +392,14 @@ public class ObjectPropEventConsumer implements Service, ActiveStateChangeHandle
                             }
                             last_msg = msg;
                         }
-
                         long lineStart = System.currentTimeMillis();
                         if(messages.size() > 0) {
                             transactionInterceptHelper.intercept();
+                            LOG.info("ObjectPropConsumer::doWork() [Line 6] => TPS() for {} messages completed in {} ms",
+                                messages.size(),(System.currentTimeMillis() - TPS));
                             LOG.info("ObjectPropConsumer::doWork() -> transactionInterceptHelper.intercept() completed in {} ms",
                                     (System.currentTimeMillis() - lineStart));
-                            this.parentTaskGuid = (String) messages.get(0).getMessage().getPayload().getOrDefault("parentTaskGuid","");
+                            this.parentTaskGuid = (String) messages.get(0).getMessage().getParentTaskGuid();
 
 
                             if (successfullSubtasks.size() > 0) {
